@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/opencloud-eu/opencloud-music/internal/subsonic/model"
 	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
 )
 
@@ -23,7 +25,7 @@ import (
 func Mount(r chi.Router, s *Server) {
 	r.Use(stripViewSuffix)
 	r.Use(fillSearch3Query)
-	HandlerFromMux(s, r)
+	model.HandlerFromMux(s, r)
 	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
 		proto.WriteError(w, proto.ErrNotFound, "no such endpoint: "+req.URL.Path)
 	})

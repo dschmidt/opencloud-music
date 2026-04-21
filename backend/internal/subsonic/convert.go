@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	libregraph "github.com/opencloud-eu/libre-graph-api-go"
+
+	"github.com/opencloud-eu/opencloud-music/internal/subsonic/model"
 )
 
 // driveItemDownloadURL constructs the WebDAV URL that serves a
@@ -145,13 +147,13 @@ func discTrack(item *libregraph.DriveItem) int {
 // Subsonic `Child` (the generated type shared by every endpoint that
 // returns a track). Missing optional fields stay nil so clients fall
 // back to their own placeholders instead of rendering empty strings.
-func driveItemToChild(item *libregraph.DriveItem) Child {
+func driveItemToChild(item *libregraph.DriveItem) model.Child {
 	id := deref(item.Id)
-	c := Child{
+	c := model.Child{
 		Id:       id,
 		IsDir:    false,
 		IsVideo:  ptr(false),
-		Type:     ptr(GenericMediaTypeMusic),
+		Type:     ptr(model.GenericMediaTypeMusic),
 		Title:    audioTitle(item),
 		CoverArt: ptr(id), // optimistic — getCoverArt proxies or 404s
 	}

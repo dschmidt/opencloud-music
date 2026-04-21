@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	libregraph "github.com/opencloud-eu/libre-graph-api-go"
+
+	"github.com/opencloud-eu/opencloud-music/internal/subsonic/model"
 	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
 )
 
@@ -16,9 +18,9 @@ import (
 // have available from a terms/aggregation response. Fields not
 // derivable from aggregations (Created, DiscTitles, …) stay at their
 // zero values — clients tolerate that.
-func albumEntry(artist, album string, songCount int64, durationSeconds int64) AlbumID3 {
+func albumEntry(artist, album string, songCount int64, durationSeconds int64) model.AlbumID3 {
 	id := albumID(artist, album)
-	return AlbumID3{
+	return model.AlbumID3{
 		Id:        id,
 		Name:      album,
 		Artist:    ptr(artist),
@@ -44,7 +46,7 @@ func albumEntry(artist, album string, songCount int64, durationSeconds int64) Al
 // clients don't flag the server as broken.
 //
 // (GET /rest/getAlbumList2)
-func (s *Server) GetAlbumList2(w http.ResponseWriter, r *http.Request, params GetAlbumList2Params) {
+func (s *Server) GetAlbumList2(w http.ResponseWriter, r *http.Request, params model.GetAlbumList2Params) {
 	if !s.requireAuth(w, r) {
 		return
 	}
@@ -93,8 +95,13 @@ func (s *Server) GetAlbumList2(w http.ResponseWriter, r *http.Request, params Ge
 		return
 	}
 
-	proto.WriteOK(w, map[string]any{
-		"albumList2": AlbumList2{Album: ptr(out)},
+	proto.WriteResponse(w, model.GetAlbumList2SuccessResponse{
+		Status:        model.GetAlbumList2SuccessResponseStatusOk,
+		Version:       proto.APIVersion,
+		Type:          proto.ServerType,
+		ServerVersion: proto.ServerVersion,
+		OpenSubsonic:  true,
+		AlbumList2:    model.AlbumList2{Album: ptr(out)},
 	})
 }
 
@@ -109,7 +116,7 @@ func (*needsHitsScanErr) Error() string { return "album list requires hits scan"
 // aggregateAlbumList returns album entries for `type` values that can
 // be expressed as a terms aggregation. Returns errNeedsHitsScan for
 // newest/recent/unknown, so the caller can fall back.
-func (s *Server) aggregateAlbumList(ctx context.Context, query, listType string, offset, size int) ([]AlbumID3, error) {
+func (s *Server) aggregateAlbumList(ctx context.Context, query, listType string, offset, size int) ([]model.AlbumID3, error) {
 	switch listType {
 	case "newest", "recent":
 		return nil, errNeedsHitsScan
@@ -190,7 +197,7 @@ func (s *Server) aggregateAlbumList(ctx context.Context, query, listType string,
 		all = all[:size]
 	}
 
-	out := make([]AlbumID3, 0, len(all))
+	out := make([]model.AlbumID3, 0, len(all))
 	for _, a := range all {
 		out = append(out, albumEntry(a.artist, a.album, a.songCount, a.durationSeconds))
 	}
@@ -200,7 +207,7 @@ func (s *Server) aggregateAlbumList(ctx context.Context, query, listType string,
 // hitsAlbumList implements the newest/recent code path: scan every
 // matching audio hit, group by (artist, album), then sort by newest
 // lastModified date across each album's tracks.
-func (s *Server) hitsAlbumList(ctx context.Context, query string, offset, size int) ([]AlbumID3, error) {
+func (s *Server) hitsAlbumList(ctx context.Context, query string, offset, size int) ([]model.AlbumID3, error) {
 	hits, err := s.graph.SearchHits(ctx, query, 0, 500)
 	if err != nil {
 		return nil, err
@@ -250,7 +257,7 @@ func (s *Server) hitsAlbumList(ctx context.Context, query string, offset, size i
 	if size < len(order) {
 		order = order[:size]
 	}
-	out := make([]AlbumID3, 0, len(order))
+	out := make([]model.AlbumID3, 0, len(order))
 	for _, k := range order {
 		a := by[k]
 		out = append(out, albumEntry(a.artist, a.album, a.count, a.duration))
@@ -267,7 +274,7 @@ func (s *Server) PostGetAlbumList2(w http.ResponseWriter, r *http.Request) {
 		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
-	p := GetAlbumList2Params{Type: AlbumListType(r.PostForm.Get("type"))}
+	p := model.GetAlbumList2Params{Type: model.AlbumListType(r.PostForm.Get("type"))}
 	if v := r.PostForm.Get("size"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			p.Size = &n
@@ -287,7 +294,7 @@ func (s *Server) PostGetAlbumList2(w http.ResponseWriter, r *http.Request) {
 // GetRandomSongs fetches audio hits and returns a random subset.
 //
 // (GET /rest/getRandomSongs)
-func (s *Server) GetRandomSongs(w http.ResponseWriter, r *http.Request, params GetRandomSongsParams) {
+func (s *Server) GetRandomSongs(w http.ResponseWriter, r *http.Request, params model.GetRandomSongsParams) {
 	if !s.requireAuth(w, r) {
 		return
 	}
@@ -318,12 +325,17 @@ func (s *Server) GetRandomSongs(w http.ResponseWriter, r *http.Request, params G
 	if size < len(items) {
 		items = items[:size]
 	}
-	songs := make([]Child, 0, len(items))
+	songs := make([]model.Child, 0, len(items))
 	for _, it := range items {
 		songs = append(songs, driveItemToChild(it))
 	}
-	proto.WriteOK(w, map[string]any{
-		"randomSongs": map[string]any{"song": songs},
+	proto.WriteResponse(w, model.GetRandomSongsSuccessResponse{
+		Status:        model.GetRandomSongsSuccessResponseStatusOk,
+		Version:       proto.APIVersion,
+		Type:          proto.ServerType,
+		ServerVersion: proto.ServerVersion,
+		OpenSubsonic:  true,
+		RandomSongs:   model.Songs{Song: ptr(songs)},
 	})
 }
 
@@ -335,7 +347,7 @@ func (s *Server) PostGetRandomSongs(w http.ResponseWriter, r *http.Request) {
 		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
-	p := GetRandomSongsParams{}
+	p := model.GetRandomSongsParams{}
 	if v := r.PostForm.Get("size"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			p.Size = &n
@@ -351,7 +363,7 @@ func (s *Server) PostGetRandomSongs(w http.ResponseWriter, r *http.Request) {
 // hits as songs (order follows server defaults).
 //
 // (GET /rest/getSongsByGenre)
-func (s *Server) GetSongsByGenre(w http.ResponseWriter, r *http.Request, params GetSongsByGenreParams) {
+func (s *Server) GetSongsByGenre(w http.ResponseWriter, r *http.Request, params model.GetSongsByGenreParams) {
 	if !s.requireAuth(w, r) {
 		return
 	}
@@ -376,15 +388,20 @@ func (s *Server) GetSongsByGenre(w http.ResponseWriter, r *http.Request, params 
 		proto.WriteError(w, proto.ErrGeneric, "failed to list songs")
 		return
 	}
-	songs := make([]Child, 0, len(hits.Hits))
+	songs := make([]model.Child, 0, len(hits.Hits))
 	for _, h := range hits.Hits {
 		if h.Resource == nil {
 			continue
 		}
 		songs = append(songs, driveItemToChild(h.Resource))
 	}
-	proto.WriteOK(w, map[string]any{
-		"songsByGenre": map[string]any{"song": songs},
+	proto.WriteResponse(w, model.GetSongsByGenreSuccessResponse{
+		Status:        model.GetSongsByGenreSuccessResponseStatusOk,
+		Version:       proto.APIVersion,
+		Type:          proto.ServerType,
+		ServerVersion: proto.ServerVersion,
+		OpenSubsonic:  true,
+		SongsByGenre:  model.Songs{Song: ptr(songs)},
 	})
 }
 
@@ -396,7 +413,7 @@ func (s *Server) PostGetSongsByGenre(w http.ResponseWriter, r *http.Request) {
 		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
-	p := GetSongsByGenreParams{Genre: r.PostForm.Get("genre")}
+	p := model.GetSongsByGenreParams{Genre: r.PostForm.Get("genre")}
 	if v := r.PostForm.Get("count"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			p.Count = &n
@@ -418,7 +435,7 @@ func (s *Server) PostGetSongsByGenre(w http.ResponseWriter, r *http.Request) {
 // window.
 //
 // (GET /rest/search3)
-func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params Search3Params) {
+func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params model.Search3Params) {
 	if !s.requireAuth(w, r) {
 		return
 	}
@@ -469,8 +486,8 @@ func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params Search3P
 		return
 	}
 
-	artists := make([]ArtistID3, 0)
-	albums := make([]AlbumID3, 0)
+	artists := make([]model.ArtistID3, 0)
+	albums := make([]model.AlbumID3, 0)
 	for _, a := range aggs {
 		if a.Field == nil || *a.Field != "audio.artist" {
 			continue
@@ -507,7 +524,7 @@ func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params Search3P
 				}
 			}
 			if len(artists) < artistCount {
-				artists = append(artists, ArtistID3{
+				artists = append(artists, model.ArtistID3{
 					Id:         artistID(artist),
 					Name:       artist,
 					AlbumCount: ptr(artistAlbums),
@@ -517,7 +534,7 @@ func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params Search3P
 		}
 	}
 
-	songs := make([]Child, 0, songCount)
+	songs := make([]model.Child, 0, songCount)
 	for _, h := range hits.Hits {
 		if h.Resource == nil {
 			continue
@@ -528,11 +545,18 @@ func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params Search3P
 		songs = append(songs, driveItemToChild(h.Resource))
 	}
 
-	proto.WriteOK(w, map[string]any{"searchResult3": SearchResult3{
-		Artist: ptr(artists),
-		Album:  ptr(albums),
-		Song:   ptr(songs),
-	}})
+	proto.WriteResponse(w, model.Search3SuccessResponse{
+		Status:        model.Search3SuccessResponseStatusOk,
+		Version:       proto.APIVersion,
+		Type:          proto.ServerType,
+		ServerVersion: proto.ServerVersion,
+		OpenSubsonic:  true,
+		SearchResult3: model.SearchResult3{
+			Artist: ptr(artists),
+			Album:  ptr(albums),
+			Song:   ptr(songs),
+		},
+	})
 }
 
 // PostSearch3 mirrors Search3.
@@ -543,7 +567,7 @@ func (s *Server) PostSearch3(w http.ResponseWriter, r *http.Request) {
 		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
-	p := Search3Params{Query: r.PostForm.Get("query")}
+	p := model.Search3Params{Query: r.PostForm.Get("query")}
 	for _, spec := range []struct {
 		key string
 		dst **int

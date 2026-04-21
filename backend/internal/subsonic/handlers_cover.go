@@ -8,6 +8,7 @@ import (
 	libregraph "github.com/opencloud-eu/libre-graph-api-go"
 
 	"github.com/opencloud-eu/opencloud-music/internal/auth"
+	"github.com/opencloud-eu/opencloud-music/internal/subsonic/model"
 	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
 )
 
@@ -31,7 +32,7 @@ const coverPreviewDefaultSize = 256
 // that as "no cover" and render their own placeholder.
 //
 // (GET /rest/getCoverArt)
-func (s *Server) GetCoverArt(w http.ResponseWriter, r *http.Request, params GetCoverArtParams) {
+func (s *Server) GetCoverArt(w http.ResponseWriter, r *http.Request, params model.GetCoverArtParams) {
 	creds, ok := auth.FromContext(r.Context())
 	if !ok {
 		proto.WriteError(w, proto.ErrMissingParam, "u (username) and p (app token) are required")
@@ -75,7 +76,7 @@ func (s *Server) PostGetCoverArt(w http.ResponseWriter, r *http.Request) {
 		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
-	p := GetCoverArtParams{Id: r.PostForm.Get("id")}
+	p := model.GetCoverArtParams{Id: r.PostForm.Get("id")}
 	s.GetCoverArt(w, r, p)
 }
 

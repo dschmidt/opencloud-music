@@ -7,15 +7,16 @@ import (
 
 	"github.com/opencloud-eu/opencloud-music/internal/graph"
 	"github.com/opencloud-eu/opencloud-music/internal/stream"
+	"github.com/opencloud-eu/opencloud-music/internal/subsonic/model"
 )
 
 // Server implements the generated ServerInterface. It embeds
-// Unimplemented (also generated) so any endpoint the music service does
-// not explicitly handle returns 501 via oapi-codegen's default stubs.
-// As MVP coverage grows, endpoints are promoted into their own methods
+// model.Unimplemented so any endpoint the music service does not
+// explicitly handle returns 501 via oapi-codegen's default stubs. As
+// MVP coverage grows, endpoints are promoted into their own methods
 // (handlers_*.go) which shadow the embedded stubs.
 type Server struct {
-	Unimplemented
+	model.Unimplemented
 
 	logger        log.Logger
 	graph         *graph.Client

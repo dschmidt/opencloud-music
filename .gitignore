@@ -5,8 +5,8 @@
 
 # Subsonic server stubs — generated from pinned OpenSubsonic OpenAPI spec.
 # Regenerated from the host via `make backend-generate` or in CI before build.
-/backend/internal/subsonic/generated.go
-/backend/internal/subsonic/.cache/
+/backend/internal/subsonic/model/generated.go
+/backend/internal/subsonic/model/.cache/
 
 # Frontend
 /frontend/node_modules/

@@ -6,6 +6,7 @@ import (
 	libregraph "github.com/opencloud-eu/libre-graph-api-go"
 
 	"github.com/opencloud-eu/opencloud-music/internal/auth"
+	"github.com/opencloud-eu/opencloud-music/internal/subsonic/model"
 	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
 )
 
@@ -46,7 +47,7 @@ func (s *Server) resolveSong(r *http.Request, id string) (*libregraph.DriveItem,
 // WebDAV bytes (with Range passthrough) to the client.
 //
 // (GET /rest/stream)
-func (s *Server) Stream(w http.ResponseWriter, r *http.Request, params StreamParams) {
+func (s *Server) Stream(w http.ResponseWriter, r *http.Request, params model.StreamParams) {
 	creds, ok := auth.FromContext(r.Context())
 	if !ok {
 		proto.WriteError(w, proto.ErrMissingParam, "u (username) and p (app token) are required")
@@ -85,15 +86,15 @@ func (s *Server) PostStream(w http.ResponseWriter, r *http.Request) {
 		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
-	s.Stream(w, r, StreamParams{Id: r.PostForm.Get("id")})
+	s.Stream(w, r, model.StreamParams{Id: r.PostForm.Get("id")})
 }
 
 // Download is the non-transcoded equivalent of Stream. Since we don't
 // transcode anyway they share an implementation.
 //
 // (GET /rest/download)
-func (s *Server) Download(w http.ResponseWriter, r *http.Request, params DownloadParams) {
-	s.Stream(w, r, StreamParams{Id: params.Id})
+func (s *Server) Download(w http.ResponseWriter, r *http.Request, params model.DownloadParams) {
+	s.Stream(w, r, model.StreamParams{Id: params.Id})
 }
 
 // PostDownload mirrors Download for POST clients.
@@ -104,5 +105,5 @@ func (s *Server) PostDownload(w http.ResponseWriter, r *http.Request) {
 		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
-	s.Stream(w, r, StreamParams{Id: r.PostForm.Get("id")})
+	s.Stream(w, r, model.StreamParams{Id: r.PostForm.Get("id")})
 }

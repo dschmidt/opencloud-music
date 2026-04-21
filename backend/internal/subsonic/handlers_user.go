@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/opencloud-eu/opencloud-music/internal/auth"
+	"github.com/opencloud-eu/opencloud-music/internal/subsonic/model"
 	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
 )
 
@@ -25,8 +26,13 @@ func (s *Server) TokenInfo(w http.ResponseWriter, r *http.Request) {
 		proto.WriteError(w, proto.ErrBadCredentials, "invalid credentials")
 		return
 	}
-	proto.WriteOK(w, map[string]any{
-		"tokenInfo": TokenInfo{Username: user.OnPremisesSamAccountName},
+	proto.WriteResponse(w, model.GetTokenInfoSuccessResponse{
+		Status:        model.GetTokenInfoSuccessResponseStatusOk,
+		Version:       proto.APIVersion,
+		Type:          proto.ServerType,
+		ServerVersion: proto.ServerVersion,
+		OpenSubsonic:  true,
+		TokenInfo:     model.TokenInfo{Username: user.OnPremisesSamAccountName},
 	})
 }
 
@@ -44,7 +50,7 @@ func (s *Server) PostTokenInfo(w http.ResponseWriter, r *http.Request) {
 // MVP; tighten or loosen them as features land.
 //
 // (GET /rest/getUser)
-func (s *Server) GetUser(w http.ResponseWriter, r *http.Request, params GetUserParams) {
+func (s *Server) GetUser(w http.ResponseWriter, r *http.Request, params model.GetUserParams) {
 	if _, ok := auth.FromContext(r.Context()); !ok {
 		proto.WriteError(w, proto.ErrMissingParam, "u (username) and p (app token) are required")
 		return
@@ -63,8 +69,13 @@ func (s *Server) GetUser(w http.ResponseWriter, r *http.Request, params GetUserP
 		proto.WriteError(w, proto.ErrNotAuthorized, "only self-lookup supported")
 		return
 	}
-	proto.WriteOK(w, map[string]any{
-		"user": User{
+	proto.WriteResponse(w, model.GetUserSuccessResponse{
+		Status:        model.GetUserSuccessResponseStatusOk,
+		Version:       proto.APIVersion,
+		Type:          proto.ServerType,
+		ServerVersion: proto.ServerVersion,
+		OpenSubsonic:  true,
+		User: model.User{
 			Username:          user.OnPremisesSamAccountName,
 			AdminRole:         false,
 			SettingsRole:      true,
@@ -87,8 +98,8 @@ func (s *Server) GetUser(w http.ResponseWriter, r *http.Request, params GetUserP
 // (POST /rest/getUser)
 func (s *Server) PostGetUser(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err == nil {
-		s.GetUser(w, r, GetUserParams{Username: r.PostForm.Get("username")})
+		s.GetUser(w, r, model.GetUserParams{Username: r.PostForm.Get("username")})
 		return
 	}
-	s.GetUser(w, r, GetUserParams{})
+	s.GetUser(w, r, model.GetUserParams{})
 }
