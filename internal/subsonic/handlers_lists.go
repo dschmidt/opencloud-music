@@ -263,7 +263,7 @@ func (s *Server) PostGetAlbumList2(w http.ResponseWriter, r *http.Request) {
 		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
-	p := GetAlbumList2Params{Type: GetAlbumList2ParamsType(r.PostForm.Get("type"))}
+	p := GetAlbumList2Params{Type: AlbumListType(r.PostForm.Get("type"))}
 	if v := r.PostForm.Get("size"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			p.Size = &n

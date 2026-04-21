@@ -1,6 +1,7 @@
 # Go
 bin/
 /opencloud-music
+/bundle-openapi
 
 # Subsonic server stubs — generated from pinned OpenSubsonic OpenAPI spec.
 # Regenerated from the host via `make generate` or in CI before build.
