@@ -41,10 +41,10 @@ func (s *Server) PostGetLicense(w http.ResponseWriter, _ *http.Request) {
 //
 // We intentionally DO NOT advertise `apiKeyAuthentication`: that
 // extension promises a single opaque token that identifies both the
-// user and the credential, but OpenCloud's app passwords are HTTP
+// user and the credential, but OpenCloud's app tokens are HTTP
 // Basic-Auth passwords — they always need a companion username. The
 // required auth flow is therefore classic Subsonic `u` + `p`, where
-// `p` carries the OpenCloud app password (encoded with `enc:<hex>`
+// `p` carries the OpenCloud app token (encoded with `enc:<hex>`
 // if your client defaults to that form).
 //
 // See https://opensubsonic.netlify.app/docs/extensions/

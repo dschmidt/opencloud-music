@@ -2,11 +2,11 @@
 // stashes them on the request context so Graph/WebDAV calls can
 // forward them as HTTP Basic Auth to OpenCloud.
 //
-// What's actually going on: OpenCloud's "app passwords" are a drop-in
+// What's actually going on: OpenCloud's "app tokens" are a drop-in
 // replacement for a user's primary password inside HTTP Basic Auth.
 // They are NOT opaque API tokens in the Subsonic sense — they cannot
 // identify the user on their own, so we always need both the username
-// (`u=`) and the app password. We therefore DO NOT advertise the
+// (`u=`) and the app token. We therefore DO NOT advertise the
 // OpenSubsonic `apiKeyAuthentication` extension; the canonical flow
 // is plain `u` + `p`.
 //
@@ -17,7 +17,7 @@
 //     curl/httpie.
 //  2. Subsonic `?u=<user>&p=<password>` /
 //     `?u=<user>&p=enc:<hex>` — the classic Subsonic credential
-//     channel. `p` carries the OpenCloud app password.
+//     channel. `p` carries the OpenCloud app token.
 //  3. `u` / `p` in a POST form body — same rules, read from the form
 //     body after ParseForm.
 //
@@ -25,7 +25,7 @@
 // supported"):
 //
 //   - Legacy HMAC (`?u=X&t=<md5(pw+salt)>&s=<salt>`). The server
-//     cannot validate these because OpenCloud app passwords are opaque
+//     cannot validate these because OpenCloud app tokens are opaque
 //     to the music service — we have nothing to hash.
 package auth
 
@@ -37,7 +37,7 @@ import (
 	"strings"
 )
 
-// Credentials is the (username, app-password) pair forwarded to
+// Credentials is the (username, app-token) pair forwarded to
 // OpenCloud as HTTP Basic Auth.
 type Credentials struct {
 	Username string
@@ -118,7 +118,7 @@ func extractCredentials(r *http.Request) Credentials {
 
 // usedHMACAuth reports whether the request tries to use the classic
 // Subsonic token-plus-salt HMAC challenge. We can't honour that scheme
-// because OpenCloud app passwords never leave OpenCloud in plaintext —
+// because OpenCloud app tokens never leave OpenCloud in plaintext —
 // we have nothing to hash.
 func usedHMACAuth(r *http.Request) bool {
 	q := r.URL.Query()
@@ -168,7 +168,7 @@ func writeHMACRejection(w http.ResponseWriter) {
 	const body = `{"subsonic-response":{` +
 		`"status":"failed","version":"1.16.1","type":"opencloud-music",` +
 		`"serverVersion":"0.1.0","openSubsonic":true,` +
-		`"error":{"code":42,"message":"token+salt HMAC auth is not supported; pass your OpenCloud app password as ?u=<user>&p=<password> (or via HTTP Basic Auth)"}` +
+		`"error":{"code":42,"message":"token+salt HMAC auth is not supported; pass your OpenCloud app token as ?u=<user>&p=<password> (or via HTTP Basic Auth)"}` +
 		`}}`
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

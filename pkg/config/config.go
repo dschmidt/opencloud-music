@@ -19,7 +19,7 @@ type Config struct {
 
 	// OpenCloud API configuration. The music service is a pure HTTP client:
 	// it authenticates against OpenCloud's Graph API by forwarding the
-	// user's HTTP Basic credentials (username + app password) from the
+	// user's HTTP Basic credentials (username + app token) from the
 	// Subsonic request, and streams audio bytes via WebDAV. No CS3/Reva
 	// gateway, no OIDC exchange.
 	OpenCloud OpenCloud `yaml:"opencloud"`

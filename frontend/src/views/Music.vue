@@ -6,7 +6,7 @@
       <h1 class="ext:text-2xl ext:font-bold" data-testid="music-title">OpenCloud Music</h1>
       <p class="ext:text-sm">
         The Subsonic-compatible endpoint is active. Configure a Subsonic client (Symfonium,
-        play:Sub, Feishin, …) with this server's URL and an OpenCloud app password to start
+        play:Sub, Feishin, …) with this server's URL and an OpenCloud app token to start
         streaming your library.
       </p>
       <p class="ext:text-sm ext:text-role-on-surface-variant">

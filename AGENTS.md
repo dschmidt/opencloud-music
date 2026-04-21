@@ -4,7 +4,7 @@ Instructions for agents working on this repo.
 
 ## Architecture in one paragraph
 
-opencloud-music is an OpenSubsonic-compatible façade over OpenCloud's Graph search + WebDAV. It has no database of its own, no OIDC token exchange, no CS3 gateway — every request is translated on the fly into Graph API calls (KQL + aggregations) and WebDAV range-GETs. Auth on the Subsonic side is HTTP Basic with an OpenCloud app password, forwarded verbatim to OpenCloud.
+opencloud-music is an OpenSubsonic-compatible façade over OpenCloud's Graph search + WebDAV. It has no database of its own, no OIDC token exchange, no CS3 gateway — every request is translated on the fly into Graph API calls (KQL + aggregations) and WebDAV range-GETs. Auth on the Subsonic side is HTTP Basic with an OpenCloud app token, forwarded verbatim to OpenCloud.
 
 ## Backend dev workflow
 

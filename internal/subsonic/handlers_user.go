@@ -15,7 +15,7 @@ import (
 // (GET /rest/tokenInfo)
 func (s *Server) TokenInfo(w http.ResponseWriter, r *http.Request) {
 	if _, ok := auth.FromContext(r.Context()); !ok {
-		writeError(w, ErrMissingParam, "u (username) and p (app password) are required")
+		writeError(w, ErrMissingParam, "u (username) and p (app token) are required")
 		return
 	}
 	user, err := s.graph.GetMe(r.Context())
@@ -47,7 +47,7 @@ func (s *Server) PostTokenInfo(w http.ResponseWriter, r *http.Request) {
 // (GET /rest/getUser)
 func (s *Server) GetUser(w http.ResponseWriter, r *http.Request, params GetUserParams) {
 	if _, ok := auth.FromContext(r.Context()); !ok {
-		writeError(w, ErrMissingParam, "u (username) and p (app password) are required")
+		writeError(w, ErrMissingParam, "u (username) and p (app token) are required")
 		return
 	}
 	user, err := s.graph.GetMe(r.Context())

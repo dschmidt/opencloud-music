@@ -61,8 +61,8 @@ func New(baseURL string, insecure bool) (*Client, error) {
 
 // authCtx returns a context that carries the current request's
 // (username, token) pair in the form libregraph expects. OpenCloud's
-// Graph endpoints accept app passwords via HTTP Basic Auth exactly the
-// same way they accept a regular password — the app password simply
+// Graph endpoints accept app tokens via HTTP Basic Auth exactly the
+// same way they accept a regular password — the app token simply
 // substitutes for the user's primary password.
 func (c *Client) authCtx(ctx context.Context) (context.Context, error) {
 	creds, ok := auth.FromContext(ctx)

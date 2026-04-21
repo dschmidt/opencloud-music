@@ -48,7 +48,7 @@ func (s *Server) resolveSong(r *http.Request, id string) (*libregraph.DriveItem,
 func (s *Server) Stream(w http.ResponseWriter, r *http.Request, params StreamParams) {
 	creds, ok := auth.FromContext(r.Context())
 	if !ok {
-		writeError(w, ErrMissingParam, "u (username) and p (app password) are required")
+		writeError(w, ErrMissingParam, "u (username) and p (app token) are required")
 		return
 	}
 	if params.Id == "" {

@@ -13,7 +13,7 @@ No separate database, no duplicate index — the music service is a stateless tr
 - Album lists (`getAlbumList2`: newest, recent, random, alphabetical, byGenre, byYear)
 - Search (`search3` — artists, albums, songs in one call)
 - Streaming (`stream`, with HTTP `Range` so clients can seek)
-- App-password auth (`ping`, `tokenInfo`, `getUser`, `getOpenSubsonicExtensions`, `getLicense`)
+- App-token auth (`ping`, `tokenInfo`, `getUser`, `getOpenSubsonicExtensions`, `getLicense`)
 
 **Stubbed (return `ok` but do nothing):**
 - Star / unstar / set rating / scrobble / get now playing
@@ -28,9 +28,9 @@ No separate database, no duplicate index — the music service is a stateless tr
 
 You need an existing OpenCloud instance reachable from the music service. The defaults assume it's on the Docker host at `https://localhost:9200` with a self-signed certificate.
 
-### 1. Generate an app password
+### 1. Generate an app token
 
-In OpenCloud, open the user settings → **App Passwords** → generate a new one. Copy the password — it's shown only once.
+In OpenCloud, open the user settings → **App Tokens** → generate a new one. Copy the token value — it's shown only once.
 
 ### 2. Run the service
 
@@ -60,18 +60,18 @@ docker compose up --build
 | Server URL | `http://<host>:9110` |
 | Type | **OpenSubsonic** |
 | Username | your OpenCloud username |
-| Password | the app password you generated in step 1 |
+| Password | the app token you generated in step 1 |
 
 ### 4. Smoke test
 
 ```bash
 curl 'http://localhost:9110/rest/ping?f=json'
-curl -u '<user>:<app-password>' 'http://localhost:9110/rest/tokenInfo?f=json'
-curl -u '<user>:<app-password>' 'http://localhost:9110/rest/getArtists?f=json'
-curl -u '<user>:<app-password>' 'http://localhost:9110/rest/search3?f=json&query=beatles'
+curl -u '<user>:<app-token>' 'http://localhost:9110/rest/tokenInfo?f=json'
+curl -u '<user>:<app-token>' 'http://localhost:9110/rest/getArtists?f=json'
+curl -u '<user>:<app-token>' 'http://localhost:9110/rest/search3?f=json&query=beatles'
 
 # Prove that Range is honoured (seeking works in clients):
-curl -u '<user>:<app-password>' \
+curl -u '<user>:<app-token>' \
      -H 'Range: bytes=0-1023' -o /tmp/song.bin \
      'http://localhost:9110/rest/stream?id=<resourceId>'
 file /tmp/song.bin   # expect "Audio file ..."
@@ -87,7 +87,7 @@ file /tmp/song.bin   # expect "Audio file ..."
 | `OC_INSECURE` | Skip TLS verification on calls to OpenCloud. Use for self-signed dev certs. | `false` |
 | `MUSIC_LOG_LEVEL` | `debug` / `info` / `warn` / `error`. | `info` |
 
-Authentication on the Subsonic endpoint is **HTTP Basic** with the OpenCloud app password; the legacy Subsonic `t`+`s` token scheme is rejected with error 40.
+Authentication on the Subsonic endpoint is **HTTP Basic** with the OpenCloud app token; the legacy Subsonic `t`+`s` token scheme is rejected with error 40.
 
 ## Architecture
 

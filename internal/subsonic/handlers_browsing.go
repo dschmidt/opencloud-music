@@ -50,7 +50,7 @@ func (s *Server) requireAuth(w http.ResponseWriter, r *http.Request) bool {
 	if _, ok := auth.FromContext(r.Context()); ok {
 		return true
 	}
-	writeError(w, ErrMissingParam, "u (username) and p (app password) are required")
+	writeError(w, ErrMissingParam, "u (username) and p (app token) are required")
 	return false
 }
 
