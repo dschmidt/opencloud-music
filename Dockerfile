@@ -1,9 +1,9 @@
 FROM golang:1.25-alpine@sha256:8e02eb337d9e0ea459e041f1ee5eece41cbb61f1d83e7d883a3e2fb4862063fa AS builder
 
 WORKDIR /app
-COPY go.mod go.sum ./
+COPY backend/go.mod backend/go.sum ./
 RUN go mod download
-COPY . .
+COPY backend/ .
 
 # The Subsonic server stubs are generated from the pinned OpenSubsonic OpenAPI
 # spec and are NOT committed. They must be generated on the host (via `make

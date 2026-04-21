@@ -47,17 +47,20 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25"
-          cache-dependency-path: go.sum
+          cache-dependency-path: backend/go.sum
 
       # The Subsonic server stubs are generated from the pinned OpenSubsonic
-      # OpenAPI spec (SHA lives in internal/subsonic/gen.go, managed by the
-      # renovate customManager below). NOT committed.
+      # OpenAPI spec (SHA lives in backend/internal/subsonic/gen.go, managed
+      # by the renovate customManager). NOT committed.
       - name: Generate Subsonic server stubs
         run: go generate ./...
 
@@ -65,12 +68,14 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: subsonic-generated
-          path: internal/subsonic/generated.go
+          path: backend/internal/subsonic/generated.go
           retention-days: 1
 
       - run: go test ./...
 
       - uses: golangci/golangci-lint-action@9fae48acfc02a90574d7c304a1758ef9895495fa # v7
+        with:
+          working-directory: backend
 
   docker-build:
     name: Docker Build
@@ -89,7 +94,7 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: subsonic-generated
-          path: internal/subsonic/
+          path: backend/internal/subsonic/
 
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 

@@ -1,49 +1,4 @@
-.PHONY: help build run test lint format generate tidy frontend-install frontend-serve frontend-build frontend-lint frontend-format frontend-format-check frontend-typecheck frontend-test-unit docker-up docker-down
-
-help:
-	@echo "Backend:"
-	@echo "  generate         regenerate Subsonic server stubs from the pinned OpenSubsonic spec"
-	@echo "  build            build ./bin/opencloud-music (runs generate first)"
-	@echo "  run              build + run the server with OC_URL=https://localhost:9200 insecure"
-	@echo "  test             go test ./..."
-	@echo "  lint             golangci-lint run"
-	@echo "  format           gofmt -w ."
-	@echo "  tidy             go mod tidy"
-	@echo "Frontend:"
-	@echo "  frontend-install     pnpm install in frontend/"
-	@echo "  frontend-serve       pnpm serve  (vite dev, auto-registers in OpenCloud)"
-	@echo "  frontend-build       pnpm build  (produces frontend/dist/ — CI / docker only)"
-	@echo "  frontend-lint        pnpm lint"
-	@echo "  frontend-format      pnpm format:write"
-	@echo "  frontend-format-check pnpm format:check"
-	@echo "  frontend-typecheck   pnpm check:types"
-	@echo "  frontend-test-unit   pnpm test:unit --watch=false"
-	@echo "Docker:"
-	@echo "  docker-up        docker compose up -d --build"
-	@echo "  docker-down      docker compose down"
-
-# --- Backend ---
-
-generate:
-	go generate ./...
-
-build: generate
-	CGO_ENABLED=0 go build -o bin/opencloud-music ./cmd/music
-
-run: build
-	MUSIC_HTTP_ADDR=:9111 OC_URL=https://localhost:9200 OC_INSECURE=true ./bin/opencloud-music server
-
-test: generate
-	go test ./...
-
-lint: generate
-	golangci-lint run
-
-format:
-	gofmt -w .
-
-tidy:
-	go mod tidy
+.PHONY: frontend-install frontend-serve frontend-build frontend-lint frontend-format frontend-format-check frontend-typecheck frontend-test-unit backend-generate backend-build backend-run backend-test backend-lint backend-format backend-tidy format docker-up docker-down
 
 # --- Frontend ---
 
@@ -70,6 +25,38 @@ frontend-typecheck:
 
 frontend-test-unit:
 	cd frontend && pnpm test:unit --watch=false
+
+# --- Backend ---
+# Delegates to backend/Makefile — keeps the Go module self-contained
+# under backend/ and matches the layout of other OpenCloud extension
+# repos (synaplan-opencloud etc.).
+
+backend-generate:
+	$(MAKE) -C backend generate
+
+backend-build:
+	$(MAKE) -C backend build
+
+backend-run:
+	$(MAKE) -C backend run
+
+backend-test:
+	$(MAKE) -C backend test
+
+backend-lint:
+	$(MAKE) -C backend lint
+
+backend-format:
+	$(MAKE) -C backend format
+
+backend-tidy:
+	$(MAKE) -C backend tidy
+
+# --- All ---
+
+format:
+	$(MAKE) frontend-format
+	$(MAKE) backend-format
 
 # --- Docker ---
 

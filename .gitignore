@@ -1,12 +1,12 @@
 # Go
-bin/
-/opencloud-music
-/bundle-openapi
+/backend/bin/
+/backend/opencloud-music
+/backend/bundle-openapi
 
 # Subsonic server stubs — generated from pinned OpenSubsonic OpenAPI spec.
-# Regenerated from the host via `make generate` or in CI before build.
-/internal/subsonic/generated.go
-/internal/subsonic/.cache/
+# Regenerated from the host via `make backend-generate` or in CI before build.
+/backend/internal/subsonic/generated.go
+/backend/internal/subsonic/.cache/
 
 # Frontend
 /frontend/node_modules/

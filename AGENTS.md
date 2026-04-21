@@ -8,9 +8,10 @@ opencloud-music is an OpenSubsonic-compatible façade over OpenCloud's Graph sea
 
 ## Backend dev workflow
 
-- Subsonic server stubs (`internal/subsonic/generated.go`) are generated from a pinned OpenSubsonic OpenAPI commit and **not committed**. Run `make generate` after checkout or whenever the pin in `internal/subsonic/gen.go` is bumped.
-- The backend Makefile targets (`make build`, `make test`, `make lint`) all depend on `make generate` so you normally don't invoke it directly.
-- Handlers implement the generated `ServerInterface`. Route wiring lives in `internal/subsonic/router.go`.
+- The Go service lives under `backend/` (self-contained `go.mod`), the Vue 3 extension under `frontend/`. The root `Makefile` delegates to `backend/Makefile` via `backend-*` targets; you can also run `make -C backend …` directly.
+- Subsonic server stubs (`backend/internal/subsonic/generated.go`) are generated from a pinned OpenSubsonic OpenAPI commit and **not committed**. Run `make backend-generate` after checkout or whenever the pin in `backend/internal/subsonic/gen.go` is bumped.
+- `backend/Makefile` targets (`build`, `test`, `lint`) all depend on `generate`, so you normally don't invoke `generate` directly.
+- Handlers implement the generated `ServerInterface`. Route wiring lives in `backend/internal/subsonic/router.go`.
 - The Graph client lives in `internal/graph/`. It uses nested aggregations (artist → album → `sum(duration)`) to avoid N+1 round trips against OpenCloud. If those return empty where they shouldn't, check whether the OpenCloud instance actually has the upstream sub-aggregation support built in.
 
 ## Frontend dev workflow

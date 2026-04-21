@@ -43,7 +43,8 @@ In OpenCloud, open the user settings → **App Tokens** → generate a new one. 
 **Locally, without Docker:**
 
 ```bash
-make generate                       # fetch OpenSubsonic spec and run oapi-codegen
+make backend-generate               # fetch OpenSubsonic spec and run oapi-codegen
+cd backend
 MUSIC_HTTP_ADDR=:9111 \
 OC_URL=https://localhost:9200 \
 OC_INSECURE=true \
@@ -53,7 +54,7 @@ OC_INSECURE=true \
 **With Docker Compose:**
 
 ```bash
-make generate                       # produce internal/subsonic/generated.go
+make backend-generate               # produce backend/internal/subsonic/generated.go
 make frontend-install
 make frontend-build                 # produce frontend/dist/
 docker compose up --build
@@ -110,21 +111,28 @@ The service is a stateless translator: every Subsonic call is fanned out to one 
 
 Code layout:
 
-- `internal/subsonic/` — handlers that implement a `ServerInterface` generated from the upstream OpenSubsonic OpenAPI spec. The `generated.go` file is **not committed** — run `make generate` after checkout.
-- `internal/subsonic/proto/` — response-envelope writer and protocol error codes. Kept separate so the auth middleware can emit Subsonic-formatted errors without depending on the generated types.
-- `internal/auth/` — extracts the Subsonic credentials (HTTP Basic, `?u`+`?p`, or POST form) onto the request context; rejects legacy HMAC auth.
-- `internal/graph/` — thin HTTP client for OpenCloud Graph.
-- `internal/stream/` — the `Range`-aware reverse proxy used by `stream`, `download`, and `getCoverArt`.
+- `backend/` — the Go service. Self-contained `go.mod`; build / test / lint via `make -C backend …` or the `backend-*` targets on the root Makefile.
+- `backend/internal/subsonic/` — handlers that implement a `ServerInterface` generated from the upstream OpenSubsonic OpenAPI spec. The `generated.go` file is **not committed** — run `make backend-generate` after checkout.
+- `backend/internal/subsonic/proto/` — response-envelope writer and protocol error codes. Kept separate so the auth middleware can emit Subsonic-formatted errors without depending on the generated types.
+- `backend/internal/auth/` — extracts the Subsonic credentials (HTTP Basic, `?u`+`?p`, or POST form) onto the request context; rejects legacy HMAC auth.
+- `backend/internal/graph/` — thin HTTP client for OpenCloud Graph.
+- `backend/internal/stream/` — the `Range`-aware reverse proxy used by `stream`, `download`, and `getCoverArt`.
+- `backend/internal/tools/bundle-openapi/` — pre-codegen spec bundler that inlines external `$ref`s so oapi-codegen emits named types (see commit `2076cd8` for why).
+- `frontend/` — Vue 3 extension registered at `/music` inside OpenCloud's web UI. Scaffold only for now.
 
 ## Development
 
+Every task has both a root-level `make <target>` and a backend-local
+`make -C backend <target>` form; use whichever fits your workflow.
+
 ```bash
 # Backend
-make generate                       # regenerate Subsonic server stubs
-make build                          # build ./bin/opencloud-music
-make run                            # build + run against https://localhost:9200
-make test                           # go test ./...
-make lint                           # golangci-lint
+make backend-generate               # regenerate Subsonic server stubs
+make backend-build                  # build backend/bin/opencloud-music
+make backend-run                    # build + run against https://localhost:9200
+make backend-test                   # go test ./...
+make backend-lint                   # golangci-lint
+make backend-format                 # gofmt
 
 # Frontend (placeholder /music extension page)
 make frontend-install
@@ -134,6 +142,9 @@ make frontend-lint
 make frontend-format-check
 make frontend-typecheck
 make frontend-test-unit
+
+# Everything
+make format                         # frontend (prettier) + backend (gofmt)
 
 # Docker
 make docker-up                      # docker compose up -d --build

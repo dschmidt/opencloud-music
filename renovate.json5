@@ -19,7 +19,7 @@
       // `//go:generate` tar-fetch URL; Renovate rewrites it on main
       // commits via the git-refs datasource.
       "customType": "regex",
-      "managerFilePatterns": ["/^internal/subsonic/gen\\.go$/"],
+      "managerFilePatterns": ["/^backend/internal/subsonic/gen\\.go$/"],
       "matchStrings": [
         "open-subsonic-api/archive/(?<currentDigest>[a-f0-9]{40})\\.tar\\.gz"
       ],
