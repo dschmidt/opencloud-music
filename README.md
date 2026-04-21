@@ -44,7 +44,7 @@ In OpenCloud, open the user settings → **App Tokens** → generate a new one. 
 
 ```bash
 make generate                       # fetch OpenSubsonic spec and run oapi-codegen
-MUSIC_HTTP_ADDR=:9110 \
+MUSIC_HTTP_ADDR=:9111 \
 OC_URL=https://localhost:9200 \
 OC_INSECURE=true \
   go run ./cmd/music server
@@ -63,7 +63,7 @@ docker compose up --build
 
 | Field | Value |
 |---|---|
-| Server URL | `http://<host>:9110` |
+| Server URL | `http://<host>:9111` |
 | Type | **OpenSubsonic** |
 | Username | your OpenCloud username |
 | Password | the app token you generated in step 1 |
@@ -71,15 +71,15 @@ docker compose up --build
 ### 4. Smoke test
 
 ```bash
-curl 'http://localhost:9110/rest/ping?f=json'
-curl -u '<user>:<app-token>' 'http://localhost:9110/rest/tokenInfo?f=json'
-curl -u '<user>:<app-token>' 'http://localhost:9110/rest/getArtists?f=json'
-curl -u '<user>:<app-token>' 'http://localhost:9110/rest/search3?f=json&query=beatles'
+curl 'http://localhost:9111/rest/ping?f=json'
+curl -u '<user>:<app-token>' 'http://localhost:9111/rest/tokenInfo?f=json'
+curl -u '<user>:<app-token>' 'http://localhost:9111/rest/getArtists?f=json'
+curl -u '<user>:<app-token>' 'http://localhost:9111/rest/search3?f=json&query=beatles'
 
 # Prove that Range is honoured (seeking works in clients):
 curl -u '<user>:<app-token>' \
      -H 'Range: bytes=0-1023' -o /tmp/song.bin \
-     'http://localhost:9110/rest/stream?id=<resourceId>'
+     'http://localhost:9111/rest/stream?id=<resourceId>'
 file /tmp/song.bin   # expect "Audio file ..."
 ```
 
@@ -87,7 +87,7 @@ file /tmp/song.bin   # expect "Audio file ..."
 
 | Env var | Purpose | Default |
 |---|---|---|
-| `MUSIC_HTTP_ADDR` | Address the service listens on. | `0.0.0.0:9110` |
+| `MUSIC_HTTP_ADDR` | Address the service listens on. | `0.0.0.0:9111` |
 | `OC_URL` | Base URL of the OpenCloud instance to proxy. | `https://host.docker.internal:9200` |
 | `OC_INTERNAL_URL` | Optional internal URL for service-to-service traffic. Falls back to `OC_URL` when empty. | unset |
 | `OC_INSECURE` | Skip TLS verification on calls to OpenCloud (self-signed dev certs). | `false` |

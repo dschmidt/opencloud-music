@@ -31,7 +31,7 @@ build: generate
 	CGO_ENABLED=0 go build -o bin/opencloud-music ./cmd/music
 
 run: build
-	MUSIC_HTTP_ADDR=:9110 OC_URL=https://localhost:9200 OC_INSECURE=true ./bin/opencloud-music server
+	MUSIC_HTTP_ADDR=:9111 OC_URL=https://localhost:9200 OC_INSECURE=true ./bin/opencloud-music server
 
 test: generate
 	go test ./...

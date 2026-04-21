@@ -66,10 +66,10 @@ func (s *Server) GetMusicFolders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	proto.WriteOK(w, map[string]any{
-		"musicFolders": map[string]any{
-			"musicFolder": []map[string]any{
-				{"id": 1, "name": "Music"},
-			},
+		"musicFolders": MusicFolders{
+			MusicFolder: ptr([]MusicFolder{
+				{Id: 1, Name: ptr("Music")},
+			}),
 		},
 	})
 }
@@ -121,7 +121,7 @@ func (s *Server) GetArtists(w http.ResponseWriter, r *http.Request, _ GetArtists
 		proto.WriteError(w, proto.ErrGeneric, "failed to list artists")
 		return
 	}
-	grouped := map[string][]map[string]any{}
+	grouped := map[string][]ArtistID3{}
 	for _, a := range aggs {
 		if a.Field == nil || *a.Field != "audio.artist" {
 			continue
@@ -132,31 +132,21 @@ func (s *Server) GetArtists(w http.ResponseWriter, r *http.Request, _ GetArtists
 				continue
 			}
 			albumCount := 0
-			durationSeconds := int64(0)
 			for _, sub := range b.SubAggregations {
-				if sub.Field == nil {
-					continue
-				}
-				switch *sub.Field {
-				case "audio.album":
+				if sub.Field != nil && *sub.Field == "audio.album" {
 					albumCount = len(sub.Buckets)
-				case "audio.duration":
-					if sub.Value != nil {
-						durationSeconds = int64(*sub.Value / 1000)
-					}
 				}
 			}
 			letter := artistIndexKey(name)
-			grouped[letter] = append(grouped[letter], map[string]any{
-				"id":         artistID(name),
-				"name":       name,
-				"albumCount": albumCount,
-				"coverArt":   artistID(name),
-				"duration":   durationSeconds,
+			grouped[letter] = append(grouped[letter], ArtistID3{
+				Id:         artistID(name),
+				Name:       name,
+				AlbumCount: ptr(albumCount),
+				CoverArt:   ptr(artistID(name)),
 			})
 		}
 	}
-	indexes := make([]map[string]any, 0, len(grouped))
+	indexes := make([]IndexID3, 0, len(grouped))
 	keys := make([]string, 0, len(grouped))
 	for k := range grouped {
 		keys = append(keys, k)
@@ -165,17 +155,17 @@ func (s *Server) GetArtists(w http.ResponseWriter, r *http.Request, _ GetArtists
 	for _, k := range keys {
 		artists := grouped[k]
 		sort.Slice(artists, func(i, j int) bool {
-			return strings.ToLower(artists[i]["name"].(string)) < strings.ToLower(artists[j]["name"].(string))
+			return strings.ToLower(artists[i].Name) < strings.ToLower(artists[j].Name)
 		})
-		indexes = append(indexes, map[string]any{
-			"name":   k,
-			"artist": artists,
+		indexes = append(indexes, IndexID3{
+			Name:   k,
+			Artist: ptr(artists),
 		})
 	}
 	proto.WriteOK(w, map[string]any{
-		"artists": map[string]any{
-			"ignoredArticles": "",
-			"index":           indexes,
+		"artists": ArtistsID3{
+			IgnoredArticles: ptr(""),
+			Index:           ptr(indexes),
 		},
 	})
 }
@@ -218,7 +208,7 @@ func (s *Server) GetArtist(w http.ResponseWriter, r *http.Request, params GetArt
 		proto.WriteError(w, proto.ErrGeneric, "failed to list albums")
 		return
 	}
-	albums := make([]map[string]any, 0)
+	albums := make([]AlbumID3, 0)
 	for _, a := range aggs {
 		if a.Field == nil || *a.Field != "audio.album" {
 			continue
@@ -234,28 +224,19 @@ func (s *Server) GetArtist(w http.ResponseWriter, r *http.Request, params GetArt
 					durationSeconds = int64(*sub.Value / 1000)
 				}
 			}
-			albums = append(albums, map[string]any{
-				"id":        albumID(name, album),
-				"name":      album,
-				"title":     album,
-				"artist":    name,
-				"artistId":  artistID(name),
-				"songCount": derefInt64(b.Count),
-				"duration":  durationSeconds,
-				"coverArt":  albumID(name, album),
-			})
+			albums = append(albums, albumEntry(name, album, derefInt64(b.Count), durationSeconds))
 		}
 	}
 	sort.Slice(albums, func(i, j int) bool {
-		return strings.ToLower(albums[i]["name"].(string)) < strings.ToLower(albums[j]["name"].(string))
+		return strings.ToLower(albums[i].Name) < strings.ToLower(albums[j].Name)
 	})
 	proto.WriteOK(w, map[string]any{
-		"artist": map[string]any{
-			"id":         params.Id,
-			"name":       name,
-			"albumCount": len(albums),
-			"album":      albums,
-			"coverArt":   params.Id,
+		"artist": ArtistWithAlbumsID3{
+			Id:         params.Id,
+			Name:       name,
+			AlbumCount: ptr(len(albums)),
+			CoverArt:   ptr(params.Id),
+			Album:      albums,
 		},
 	})
 }
@@ -301,9 +282,9 @@ func (s *Server) GetAlbum(w http.ResponseWriter, r *http.Request, params GetAlbu
 	tracks := dedupeTracks(hits.Hits)
 	sort.SliceStable(tracks, func(i, j int) bool { return discTrack(tracks[i]) < discTrack(tracks[j]) })
 
-	songs := make([]map[string]any, 0, len(tracks))
+	songs := make([]Child, 0, len(tracks))
 	for _, t := range tracks {
-		songs = append(songs, driveItemToSong(t))
+		songs = append(songs, driveItemToChild(t))
 	}
 	totalSeconds := 0
 	for _, t := range tracks {
@@ -311,22 +292,23 @@ func (s *Server) GetAlbum(w http.ResponseWriter, r *http.Request, params GetAlbu
 			totalSeconds += int(*t.Audio.Duration / 1000)
 		}
 	}
-	payload := map[string]any{
-		"id":        params.Id,
-		"name":      album,
-		"title":     album,
-		"artist":    artist,
-		"artistId":  artistID(artist),
-		"songCount": len(songs),
-		"duration":  totalSeconds,
-		"song":      songs,
-		"coverArt":  params.Id,
+	payload := AlbumID3WithSongs{
+		Id:        params.Id,
+		Name:      album,
+		Artist:    ptr(artist),
+		ArtistId:  ptr(artistID(artist)),
+		SongCount: len(songs),
+		Duration:  totalSeconds,
+		CoverArt:  ptr(params.Id),
+		Song:      songs,
 	}
-	if len(tracks) > 0 && tracks[0].Audio != nil && tracks[0].Audio.Year != nil {
-		payload["year"] = *tracks[0].Audio.Year
-	}
-	if len(tracks) > 0 && tracks[0].Audio != nil && tracks[0].Audio.Genre != nil {
-		payload["genre"] = *tracks[0].Audio.Genre
+	if len(tracks) > 0 && tracks[0].Audio != nil {
+		if tracks[0].Audio.Year != nil {
+			payload.Year = ptr(int(*tracks[0].Audio.Year))
+		}
+		if tracks[0].Audio.Genre != nil {
+			payload.Genre = tracks[0].Audio.Genre
+		}
 	}
 	proto.WriteOK(w, map[string]any{"album": payload})
 }
@@ -362,7 +344,7 @@ func (s *Server) GetGenres(w http.ResponseWriter, r *http.Request) {
 		proto.WriteError(w, proto.ErrGeneric, "failed to list genres")
 		return
 	}
-	var genres []map[string]any
+	var genres []Genre
 	for _, a := range aggs {
 		if a.Field == nil || *a.Field != "audio.genre" {
 			continue
@@ -373,30 +355,20 @@ func (s *Server) GetGenres(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			albumCount := 0
-			durationSeconds := int64(0)
 			for _, sub := range b.SubAggregations {
-				if sub.Field == nil {
-					continue
-				}
-				switch *sub.Field {
-				case "audio.album":
+				if sub.Field != nil && *sub.Field == "audio.album" {
 					albumCount = len(sub.Buckets)
-				case "audio.duration":
-					if sub.Value != nil {
-						durationSeconds = int64(*sub.Value / 1000)
-					}
 				}
 			}
-			genres = append(genres, map[string]any{
-				"value":      name,
-				"songCount":  derefInt64(b.Count),
-				"albumCount": albumCount,
-				"duration":   durationSeconds,
+			genres = append(genres, Genre{
+				Value:      name,
+				SongCount:  int(derefInt64(b.Count)),
+				AlbumCount: albumCount,
 			})
 		}
 	}
 	proto.WriteOK(w, map[string]any{
-		"genres": map[string]any{"genre": genres},
+		"genres": Genres{Genre: ptr(genres)},
 	})
 }
 
@@ -473,7 +445,7 @@ func (s *Server) GetSong(w http.ResponseWriter, r *http.Request, params GetSongP
 		proto.WriteError(w, proto.ErrNotFound, "song not found")
 		return
 	}
-	proto.WriteOK(w, map[string]any{"song": driveItemToSong(item)})
+	proto.WriteOK(w, map[string]any{"song": driveItemToChild(item)})
 }
 
 // PostGetSong mirrors GetSong for POST clients.

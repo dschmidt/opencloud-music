@@ -141,60 +141,59 @@ func discTrack(item *libregraph.DriveItem) int {
 	return d*1000 + t
 }
 
-// driveItemToSong projects a Graph DriveItem + its Audio facet into the
-// Subsonic `song` payload shape consumed by clients. Missing optional
-// fields are left off the map entirely so clients display their own
-// fallbacks instead of empty strings.
-func driveItemToSong(item *libregraph.DriveItem) map[string]any {
+// driveItemToChild projects a Graph DriveItem + its Audio facet into a
+// Subsonic `Child` (the generated type shared by every endpoint that
+// returns a track). Missing optional fields stay nil so clients fall
+// back to their own placeholders instead of rendering empty strings.
+func driveItemToChild(item *libregraph.DriveItem) Child {
 	id := deref(item.Id)
-	out := map[string]any{
-		"id":       id,
-		"isDir":    false,
-		"isVideo":  false,
-		"type":     "music",
-		"title":    audioTitle(item),
-		"coverArt": id, // optimistic — getCoverArt proxies or 404s
+	c := Child{
+		Id:       id,
+		IsDir:    false,
+		IsVideo:  ptr(false),
+		Type:     ptr(GenericMediaTypeMusic),
+		Title:    audioTitle(item),
+		CoverArt: ptr(id), // optimistic — getCoverArt proxies or 404s
 	}
 	if name := deref(item.Name); name != "" {
-		ext := path.Ext(name)
-		if len(ext) > 1 {
-			out["suffix"] = ext[1:]
+		if ext := path.Ext(name); len(ext) > 1 {
+			c.Suffix = ptr(ext[1:])
 		}
 	}
 	if item.Size != nil {
-		out["size"] = *item.Size
+		c.Size = ptr(int(*item.Size))
 	}
 	if a := item.Audio; a != nil {
 		if a.Album != nil {
-			out["album"] = *a.Album
+			c.Album = a.Album
 			if a.Artist != nil {
-				out["albumId"] = albumID(*a.Artist, *a.Album)
+				c.AlbumId = ptr(albumID(*a.Artist, *a.Album))
 			}
 		}
 		if a.Artist != nil && *a.Artist != "" {
-			out["artist"] = *a.Artist
-			out["artistId"] = artistID(*a.Artist)
+			c.Artist = a.Artist
+			c.ArtistId = ptr(artistID(*a.Artist))
 		}
 		if a.Genre != nil {
-			out["genre"] = *a.Genre
+			c.Genre = a.Genre
 		}
 		if a.Year != nil {
-			out["year"] = *a.Year
+			c.Year = ptr(int(*a.Year))
 		}
 		if a.Track != nil {
-			out["track"] = *a.Track
+			c.Track = ptr(int(*a.Track))
 		}
 		if a.Disc != nil {
-			out["discNumber"] = *a.Disc
+			c.DiscNumber = ptr(int(*a.Disc))
 		}
 		if a.Duration != nil {
-			out["duration"] = *a.Duration / 1000 // Subsonic wants seconds
+			c.Duration = ptr(int(*a.Duration / 1000)) // Subsonic wants seconds
 		}
 		if a.Bitrate != nil {
-			out["bitRate"] = *a.Bitrate
+			c.BitRate = ptr(int(*a.Bitrate))
 		}
 	}
-	return out
+	return c
 }
 
 // audioTitle falls back to the filename (sans extension) if the audio

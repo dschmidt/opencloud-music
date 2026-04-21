@@ -3,6 +3,13 @@
 // `subsonic` package so that non-handler code paths (notably the auth
 // middleware) can emit a Subsonic-formatted failure without taking a
 // dependency on the generated types that live alongside the handlers.
+//
+// We deliberately redeclare the envelope shape here rather than
+// importing the oapi-codegen-produced types: those live in the parent
+// `subsonic` package (so importing them would re-create the cycle this
+// split was designed to avoid), and the envelope we write is
+// intentionally a minimal subset of the generated SubsonicResponse
+// anyway.
 package proto
 
 import (

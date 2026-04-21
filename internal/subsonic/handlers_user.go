@@ -26,9 +26,7 @@ func (s *Server) TokenInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	proto.WriteOK(w, map[string]any{
-		"tokenInfo": map[string]any{
-			"username": user.OnPremisesSamAccountName,
-		},
+		"tokenInfo": TokenInfo{Username: user.OnPremisesSamAccountName},
 	})
 }
 
@@ -66,21 +64,20 @@ func (s *Server) GetUser(w http.ResponseWriter, r *http.Request, params GetUserP
 		return
 	}
 	proto.WriteOK(w, map[string]any{
-		"user": map[string]any{
-			"username":          user.OnPremisesSamAccountName,
-			"email":             user.Mail,
-			"adminRole":         false,
-			"settingsRole":      true,
-			"streamRole":        true,
-			"downloadRole":      true,
-			"shareRole":         false,
-			"playlistRole":      false,
-			"coverArtRole":      false,
-			"commentRole":       false,
-			"podcastRole":       false,
-			"jukeboxRole":       false,
-			"uploadRole":        false,
-			"scrobblingEnabled": false,
+		"user": User{
+			Username:          user.OnPremisesSamAccountName,
+			AdminRole:         false,
+			SettingsRole:      true,
+			StreamRole:        true,
+			DownloadRole:      true,
+			ShareRole:         false,
+			PlaylistRole:      false,
+			CoverArtRole:      false,
+			CommentRole:       false,
+			PodcastRole:       false,
+			JukeboxRole:       false,
+			UploadRole:        false,
+			ScrobblingEnabled: false,
 		},
 	})
 }

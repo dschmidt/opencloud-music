@@ -27,9 +27,7 @@ func (s *Server) PostPing(w http.ResponseWriter, _ *http.Request) {
 // (GET /rest/getLicense)
 func (s *Server) GetLicense(w http.ResponseWriter, _ *http.Request) {
 	proto.WriteOK(w, map[string]any{
-		"license": map[string]any{
-			"valid": true,
-		},
+		"license": License{Valid: true},
 	})
 }
 
@@ -52,7 +50,7 @@ func (s *Server) PostGetLicense(w http.ResponseWriter, _ *http.Request) {
 // if your client defaults to that form).
 //
 // See https://opensubsonic.netlify.app/docs/extensions/
-var openSubsonicExtensions = []map[string]any{}
+var openSubsonicExtensions = []OpenSubsonicExtension{}
 
 // GetOpenSubsonicExtensions advertises OpenSubsonic API v1 support and
 // the extension set above.

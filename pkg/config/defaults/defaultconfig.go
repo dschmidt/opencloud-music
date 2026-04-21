@@ -28,7 +28,7 @@ func DefaultConfig() *config.Config {
 			Name: "music",
 		},
 		HTTP: config.HTTP{
-			Addr:      "0.0.0.0:9110",
+			Addr:      "0.0.0.0:9111",
 			Root:      "/",
 			Namespace: "eu.opencloud.music",
 			CORS: config.CORS{

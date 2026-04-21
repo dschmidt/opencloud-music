@@ -12,18 +12,22 @@ import (
 	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
 )
 
-// albumEntry is the Subsonic `album` payload shape used across the
-// list endpoints.
-func albumEntry(artist, album string, songCount int64, durationSeconds int64) map[string]any {
-	return map[string]any{
-		"id":        albumID(artist, album),
-		"name":      album,
-		"title":     album,
-		"artist":    artist,
-		"artistId":  artistID(artist),
-		"songCount": songCount,
-		"coverArt":  albumID(artist, album),
-		"duration":  durationSeconds,
+// albumEntry builds the generated AlbumID3 shape from the fields we
+// have available from a terms/aggregation response. Fields not
+// derivable from aggregations (Created, DiscTitles, …) stay at their
+// zero values — clients tolerate that.
+func albumEntry(artist, album string, songCount int64, durationSeconds int64) AlbumID3 {
+	id := albumID(artist, album)
+	return AlbumID3{
+		Id:        id,
+		Name:      album,
+		Artist:    ptr(artist),
+		ArtistId:  ptr(artistID(artist)),
+		SongCount: int(songCount),
+		CoverArt:  ptr(id),
+		Duration:  int(durationSeconds),
+		// Created is required by the spec but aggregations don't carry
+		// it; leave at zero-value (clients tolerate 0001-01-01).
 	}
 }
 
@@ -90,7 +94,7 @@ func (s *Server) GetAlbumList2(w http.ResponseWriter, r *http.Request, params Ge
 	}
 
 	proto.WriteOK(w, map[string]any{
-		"albumList2": map[string]any{"album": out},
+		"albumList2": AlbumList2{Album: ptr(out)},
 	})
 }
 
@@ -105,7 +109,7 @@ func (*needsHitsScanErr) Error() string { return "album list requires hits scan"
 // aggregateAlbumList returns album entries for `type` values that can
 // be expressed as a terms aggregation. Returns errNeedsHitsScan for
 // newest/recent/unknown, so the caller can fall back.
-func (s *Server) aggregateAlbumList(ctx context.Context, query, listType string, offset, size int) ([]map[string]any, error) {
+func (s *Server) aggregateAlbumList(ctx context.Context, query, listType string, offset, size int) ([]AlbumID3, error) {
 	switch listType {
 	case "newest", "recent":
 		return nil, errNeedsHitsScan
@@ -186,7 +190,7 @@ func (s *Server) aggregateAlbumList(ctx context.Context, query, listType string,
 		all = all[:size]
 	}
 
-	out := make([]map[string]any, 0, len(all))
+	out := make([]AlbumID3, 0, len(all))
 	for _, a := range all {
 		out = append(out, albumEntry(a.artist, a.album, a.songCount, a.durationSeconds))
 	}
@@ -196,7 +200,7 @@ func (s *Server) aggregateAlbumList(ctx context.Context, query, listType string,
 // hitsAlbumList implements the newest/recent code path: scan every
 // matching audio hit, group by (artist, album), then sort by newest
 // lastModified date across each album's tracks.
-func (s *Server) hitsAlbumList(ctx context.Context, query string, offset, size int) ([]map[string]any, error) {
+func (s *Server) hitsAlbumList(ctx context.Context, query string, offset, size int) ([]AlbumID3, error) {
 	hits, err := s.graph.SearchHits(ctx, query, 0, 500)
 	if err != nil {
 		return nil, err
@@ -246,7 +250,7 @@ func (s *Server) hitsAlbumList(ctx context.Context, query string, offset, size i
 	if size < len(order) {
 		order = order[:size]
 	}
-	out := make([]map[string]any, 0, len(order))
+	out := make([]AlbumID3, 0, len(order))
 	for _, k := range order {
 		a := by[k]
 		out = append(out, albumEntry(a.artist, a.album, a.count, a.duration))
@@ -314,9 +318,9 @@ func (s *Server) GetRandomSongs(w http.ResponseWriter, r *http.Request, params G
 	if size < len(items) {
 		items = items[:size]
 	}
-	songs := make([]map[string]any, 0, len(items))
+	songs := make([]Child, 0, len(items))
 	for _, it := range items {
-		songs = append(songs, driveItemToSong(it))
+		songs = append(songs, driveItemToChild(it))
 	}
 	proto.WriteOK(w, map[string]any{
 		"randomSongs": map[string]any{"song": songs},
@@ -372,12 +376,12 @@ func (s *Server) GetSongsByGenre(w http.ResponseWriter, r *http.Request, params 
 		proto.WriteError(w, proto.ErrGeneric, "failed to list songs")
 		return
 	}
-	songs := make([]map[string]any, 0, len(hits.Hits))
+	songs := make([]Child, 0, len(hits.Hits))
 	for _, h := range hits.Hits {
 		if h.Resource == nil {
 			continue
 		}
-		songs = append(songs, driveItemToSong(h.Resource))
+		songs = append(songs, driveItemToChild(h.Resource))
 	}
 	proto.WriteOK(w, map[string]any{
 		"songsByGenre": map[string]any{"song": songs},
@@ -465,8 +469,8 @@ func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params Search3P
 		return
 	}
 
-	artists := make([]map[string]any, 0)
-	albums := make([]map[string]any, 0)
+	artists := make([]ArtistID3, 0)
+	albums := make([]AlbumID3, 0)
 	for _, a := range aggs {
 		if a.Field == nil || *a.Field != "audio.artist" {
 			continue
@@ -503,17 +507,17 @@ func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params Search3P
 				}
 			}
 			if len(artists) < artistCount {
-				artists = append(artists, map[string]any{
-					"id":         artistID(artist),
-					"name":       artist,
-					"albumCount": artistAlbums,
-					"coverArt":   artistID(artist),
+				artists = append(artists, ArtistID3{
+					Id:         artistID(artist),
+					Name:       artist,
+					AlbumCount: ptr(artistAlbums),
+					CoverArt:   ptr(artistID(artist)),
 				})
 			}
 		}
 	}
 
-	songs := make([]map[string]any, 0, songCount)
+	songs := make([]Child, 0, songCount)
 	for _, h := range hits.Hits {
 		if h.Resource == nil {
 			continue
@@ -521,13 +525,13 @@ func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params Search3P
 		if len(songs) >= songCount {
 			break
 		}
-		songs = append(songs, driveItemToSong(h.Resource))
+		songs = append(songs, driveItemToChild(h.Resource))
 	}
 
-	proto.WriteOK(w, map[string]any{"searchResult3": map[string]any{
-		"artist": artists,
-		"album":  albums,
-		"song":   songs,
+	proto.WriteOK(w, map[string]any{"searchResult3": SearchResult3{
+		Artist: ptr(artists),
+		Album:  ptr(albums),
+		Song:   ptr(songs),
 	}})
 }
 

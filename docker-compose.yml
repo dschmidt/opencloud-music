@@ -2,9 +2,9 @@ services:
   music:
     build: .
     ports:
-      - "9110:9110"
+      - "9111:9111"
     environment:
-      MUSIC_HTTP_ADDR: ":9110"
+      MUSIC_HTTP_ADDR: ":9111"
       # Point the music service at your existing OpenCloud instance. The
       # default assumes it runs on the Docker host at :9200 with a
       # self-signed cert (hence OC_INSECURE=true). Override via a .env

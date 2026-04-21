@@ -18,5 +18,5 @@ RUN CGO_ENABLED=0 go build -o /opencloud-music ./cmd/music
 FROM alpine:3.20@sha256:a4f4213abb84c497377b8544c81b3564f313746700372ec4fe84653e4fb03805
 COPY --from=builder /opencloud-music /usr/local/bin/opencloud-music
 COPY frontend/dist/ /web/apps/music/
-EXPOSE 9110
+EXPOSE 9111
 ENTRYPOINT ["opencloud-music", "server"]
