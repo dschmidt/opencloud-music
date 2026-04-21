@@ -12,20 +12,23 @@ No separate database, no duplicate index — the music service is a stateless tr
 ## Feature Status
 
 **Working:**
-- ID3-based browsing (`getArtists`, `getArtist`, `getAlbum`, `getSong`, `getGenres`, `getMusicFolders`)
-- Album lists (`getAlbumList2`: newest, recent, random, alphabetical, byGenre, byYear)
-- Search (`search3` — artists, albums, songs in one call)
-- Streaming (`stream`, with HTTP `Range` so clients can seek)
-- App-token auth (`ping`, `tokenInfo`, `getUser`, `getOpenSubsonicExtensions`, `getLicense`)
+- ID3-based browsing: `getMusicFolders`, `getArtists`, `getArtist`, `getAlbum`, `getSong`, `getGenres`
+- Album lists: `getAlbumList2` (`newest`, `recent`, `random`, `alphabeticalByName`, `alphabeticalByArtist`, `byGenre`, `byYear`), `getRandomSongs`, `getSongsByGenre`
+- Search: `search3` — artists, albums, songs in one call
+- Streaming: `stream` and `download`, with HTTP `Range` so clients can seek
+- Cover art: `getCoverArt` — proxies OpenCloud's preview service for embedded JPEG covers
+- Auth / system: `ping`, `tokenInfo`, `getUser`, `getOpenSubsonicExtensions`, `getLicense`
 
-**Stubbed (return `ok` but do nothing):**
-- Star / unstar / set rating / scrobble / get now playing
+**Stubbed (return empty envelopes so client logs stay clean; state is not persisted):**
+- Annotations: `star` / `unstar` / `setRating` / `scrobble`
+- Now playing — always empty
+- Playlists — `getPlaylists` returns empty; create/update/delete are not implemented
+- Podcasts, internet-radio stations, jukebox, bookmarks, chat messages — always empty
 
-**Not implemented (yet):**
-- Cover art — always returns 404
-- Playlists
-- Transcoding
-- Podcasts, jukebox, shares, bookmarks
+**Not implemented:**
+- Transcoding — `stream` and `download` serve the original bytes
+- Shares, user management, password change
+- Legacy Subsonic token+salt HMAC auth — rejected with error 42 (use `u`+`p` or HTTP Basic)
 
 ## Quick Start
 
@@ -84,34 +87,34 @@ file /tmp/song.bin   # expect "Audio file ..."
 
 | Env var | Purpose | Default |
 |---|---|---|
-| `MUSIC_HTTP_ADDR` | Address the service listens on. | `:9110` |
-| `OC_URL` | Base URL of the OpenCloud instance to proxy. | *(required)* |
-| `OC_INTERNAL_URL` | Optional internal URL (e.g. behind a service mesh). Falls back to `OC_URL`. | unset |
-| `OC_INSECURE` | Skip TLS verification on calls to OpenCloud. Use for self-signed dev certs. | `false` |
-| `MUSIC_LOG_LEVEL` | `debug` / `info` / `warn` / `error`. | `info` |
+| `MUSIC_HTTP_ADDR` | Address the service listens on. | `0.0.0.0:9110` |
+| `OC_URL` | Base URL of the OpenCloud instance to proxy. | `https://host.docker.internal:9200` |
+| `OC_INTERNAL_URL` | Optional internal URL for service-to-service traffic. Falls back to `OC_URL` when empty. | unset |
+| `OC_INSECURE` | Skip TLS verification on calls to OpenCloud (self-signed dev certs). | `false` |
+| `MUSIC_LOG_LEVEL` | `panic` / `fatal` / `error` / `warn` / `info` / `debug` / `trace`. `OC_LOG_LEVEL` takes precedence when set. | `info` |
+| `MUSIC_DEBUG_ADDR` | Bind address of the debug / metrics server. | `127.0.0.1:9268` |
 
-Authentication on the Subsonic endpoint is **HTTP Basic** with the OpenCloud app token; the legacy Subsonic `t`+`s` token scheme is rejected with error 40.
+Authentication on the Subsonic endpoint is **HTTP Basic** with the OpenCloud app token — or the classic Subsonic `?u=<user>&p=<token>` / `?u=<user>&p=enc:<hex>` query variants. The legacy Subsonic `t`+`s` HMAC scheme is rejected with error 42 (OpenCloud app tokens never leave OpenCloud in plaintext, so there's nothing to hash against).
 
 ## Architecture
 
-```
-  Subsonic client
-        │
-        ▼
-  opencloud-music                         OpenCloud
-  ┌──────────────┐  Basic auth     ┌──────────────────┐
-  │ /rest/*      │ ───────────────▶│ /graph/search    │
-  │ (OpenSubsonic│                 │ /graph/me        │
-  │  handlers)   │                 │ /remote.php/dav… │
-  └──────┬───────┘                 └────────┬─────────┘
-         │                                  │
-         │ HTTP proxy with Range passthrough│
-         └──────────────────────────────────┘
-```
+The service is a stateless translator: every Subsonic call is fanned out to one or two OpenCloud endpoints using the user's app token as HTTP Basic Auth, and the response is shaped back into a Subsonic envelope.
 
-- Handlers in `internal/subsonic/` implement a `ServerInterface` generated from the upstream OpenSubsonic OpenAPI spec (the `generated.go` file is **not committed** — run `make generate` after checkout).
-- The Graph client in `internal/graph/` issues KQL searches against `/graph/v1beta1/search/query`, using nested aggregations to collapse artists→albums→`sum(duration)` into a single round-trip.
-- Streaming in `internal/stream/` is a zero-copy reverse proxy from `webDavUrl`, forwarding `Range`, `If-Range`, and `If-None-Match` so clients can seek freely.
+| Subsonic endpoint(s) | OpenCloud endpoint | What happens |
+|---|---|---|
+| `getArtists` / `getArtist` / `getAlbum` / `getGenres` / `getAlbumList2` / `search3` / `getSong` / `getRandomSongs` / `getSongsByGenre` | `POST /graph/v1beta1/search/query` | KQL query with nested aggregations (`audio.artist` → `audio.album` → `sum(audio.duration)`) so album counts and runtimes arrive in a single round-trip instead of N+1. |
+| `tokenInfo` / `getUser` | `GET /graph/v1.0/me` | Used to confirm the app token and surface the caller's username. |
+| `stream` / `download` | `GET /dav/spaces/<driveId>/<path>/<file>` | Reverse-proxied from the driveItem's `webDavUrl` (falling back to a URL synthesised from `parentReference` + `name` when the search hit doesn't carry one). Forwards `Range`, `If-Range`, `If-Modified-Since`, and `If-None-Match` so clients can seek and use conditional GETs. |
+| `getCoverArt` | OpenCloud preview URL of a representative track | Resolves Subsonic artist (`ar-…`) / album (`al-…`) IDs to a driveItem, then proxies the preview service's JPEG. Song IDs use the driveItem directly. |
+| `ping` / `getLicense` / `getOpenSubsonicExtensions` | — | Answered locally; no OpenCloud call. |
+
+Code layout:
+
+- `internal/subsonic/` — handlers that implement a `ServerInterface` generated from the upstream OpenSubsonic OpenAPI spec. The `generated.go` file is **not committed** — run `make generate` after checkout.
+- `internal/subsonic/proto/` — response-envelope writer and protocol error codes. Kept separate so the auth middleware can emit Subsonic-formatted errors without depending on the generated types.
+- `internal/auth/` — extracts the Subsonic credentials (HTTP Basic, `?u`+`?p`, or POST form) onto the request context; rejects legacy HMAC auth.
+- `internal/graph/` — thin HTTP client for OpenCloud Graph.
+- `internal/stream/` — the `Range`-aware reverse proxy used by `stream`, `download`, and `getCoverArt`.
 
 ## Development
 
