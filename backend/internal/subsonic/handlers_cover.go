@@ -63,7 +63,7 @@ func (s *Server) GetCoverArt(w http.ResponseWriter, r *http.Request, params mode
 		proto.WriteError(w, proto.ErrNotFound, "no cover art for id")
 		return
 	}
-	if err := s.proxy.Serve(r.Context(), previewURL, creds.Username, creds.Password, w, r); err != nil {
+	if err := s.proxy.Serve(r.Context(), previewURL, creds, w, r); err != nil {
 		s.logger.Debug().Err(err).Str("id", params.Id).Msg("getCoverArt: proxy ended with error")
 	}
 }

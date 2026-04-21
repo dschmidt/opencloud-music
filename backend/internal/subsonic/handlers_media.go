@@ -45,7 +45,7 @@ func (s *Server) Stream(w http.ResponseWriter, r *http.Request, params model.Str
 		proto.WriteError(w, proto.ErrGeneric, "song has no download URL")
 		return
 	}
-	if err := s.proxy.Serve(r.Context(), webDav, creds.Username, creds.Password, w, r); err != nil {
+	if err := s.proxy.Serve(r.Context(), webDav, creds, w, r); err != nil {
 		s.logger.Debug().Err(err).Str("id", params.Id).Msg("stream: proxy ended with error")
 	}
 }

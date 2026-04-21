@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/opencloud-eu/opencloud-music/internal/auth"
 )
 
 // Proxier is configured once at server start with the TLS policy for
@@ -31,11 +33,12 @@ func New(insecure bool) *Proxier {
 }
 
 // Serve executes an HTTP GET against webDavURL using the caller's
-// OpenCloud credentials (HTTP Basic Auth), then streams the response
-// (status code, selected headers, body) back through w. Range /
-// conditional headers from r are forwarded verbatim so Subsonic
-// clients can request partial content.
-func (p *Proxier) Serve(ctx context.Context, webDavURL, username, token string, w http.ResponseWriter, r *http.Request) error {
+// OpenCloud credentials — Bearer for OIDC access tokens forwarded
+// from the web UI, Basic for (username, app-token) pairs — then
+// streams the response (status code, selected headers, body) back
+// through w. Range / conditional headers from r are forwarded
+// verbatim so Subsonic clients can request partial content.
+func (p *Proxier) Serve(ctx context.Context, webDavURL string, creds auth.Credentials, w http.ResponseWriter, r *http.Request) error {
 	if webDavURL == "" {
 		return errors.New("stream: empty webDavUrl")
 	}
@@ -44,7 +47,11 @@ func (p *Proxier) Serve(ctx context.Context, webDavURL, username, token string, 
 	if err != nil {
 		return fmt.Errorf("stream: build request: %w", err)
 	}
-	req.SetBasicAuth(username, token)
+	if creds.IsBearer() {
+		req.Header.Set("Authorization", "Bearer "+creds.BearerToken)
+	} else {
+		req.SetBasicAuth(creds.Username, creds.Password)
+	}
 
 	// Forward the cache/range negotiation headers the client sent.
 	// Content-Type is set on the response, not the request.

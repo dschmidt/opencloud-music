@@ -1,25 +1,21 @@
-// Package auth extracts the Subsonic credentials from each request and
-// stashes them on the request context so Graph/WebDAV calls can
-// forward them as HTTP Basic Auth to OpenCloud.
+// Package auth extracts the caller's OpenCloud credentials from each
+// request and stashes them on the request context so Graph/WebDAV
+// calls can forward them.
 //
-// What's actually going on: OpenCloud's "app tokens" are a drop-in
-// replacement for a user's primary password inside HTTP Basic Auth.
-// They are NOT opaque API tokens in the Subsonic sense — they cannot
-// identify the user on their own, so we always need both the username
-// (`u=`) and the app token. We therefore DO NOT advertise the
-// OpenSubsonic `apiKeyAuthentication` extension; the canonical flow
-// is plain `u` + `p`.
+// Two credential shapes are accepted:
 //
-// Supported authentication surfaces (first non-empty wins):
-//
-//  1. Standard HTTP Basic Auth — the client sends `Authorization: Basic
-//     <base64(user:password)>`. Handy for reverse proxies and
-//     curl/httpie.
-//  2. Subsonic `?u=<user>&p=<password>` /
-//     `?u=<user>&p=enc:<hex>` — the classic Subsonic credential
-//     channel. `p` carries the OpenCloud app token.
-//  3. `u` / `p` in a POST form body — same rules, read from the form
-//     body after ParseForm.
+//  1. An OIDC access token via `Authorization: Bearer <token>`. This
+//     is the path the OpenCloud web UI extension uses — the browser
+//     already holds a token scoped to OpenCloud, and we just pipe it
+//     through.
+//  2. An OpenCloud app token paired with a username, via one of:
+//     - `Authorization: Basic <base64(user:token)>`
+//     - `?u=<user>&p=<token>` / `?u=<user>&p=enc:<hex>`
+//     - `u` / `p` in a POST form body.
+//     App tokens are drop-in replacements for the user's primary
+//     password inside HTTP Basic Auth — they can't identify the user
+//     on their own, which is why a companion username is always
+//     required.
 //
 // Explicitly rejected (HTTP 200 + Subsonic error 42):
 //
@@ -39,11 +35,33 @@ import (
 	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
 )
 
-// Credentials is the (username, app-token) pair forwarded to
-// OpenCloud as HTTP Basic Auth.
+// Credentials is what the auth middleware extracts from the inbound
+// request. Exactly one of BearerToken OR (Username + Password) is
+// populated: callers that forward to OpenCloud branch on IsBearer.
 type Credentials struct {
+	// BearerToken is an OIDC access token scoped to OpenCloud. When
+	// set, it's forwarded verbatim as `Authorization: Bearer …` and
+	// the username/password fields stay empty.
+	BearerToken string
+
+	// Username + Password carry the app-token flavour of credential:
+	// Password is the OpenCloud app token, Username is the OpenCloud
+	// account it belongs to. Forwarded as HTTP Basic Auth.
 	Username string
 	Password string
+}
+
+// IsBearer reports whether the credentials represent a Bearer token
+// rather than a Basic-auth (username, app-token) pair.
+func (c Credentials) IsBearer() bool { return c.BearerToken != "" }
+
+// Valid reports whether the credentials carry either an OIDC access
+// token or a (username, app-token) pair that's safe to forward.
+func (c Credentials) Valid() bool {
+	if c.BearerToken != "" {
+		return true
+	}
+	return c.Username != "" && c.Password != ""
 }
 
 type credsCtxKey struct{}
@@ -53,7 +71,7 @@ type credsCtxKey struct{}
 // Graph/WebDAV must call this to forward the user's credentials.
 func FromContext(ctx context.Context) (Credentials, bool) {
 	c, ok := ctx.Value(credsCtxKey{}).(Credentials)
-	return c, ok && c.Password != "" && c.Username != ""
+	return c, ok && c.Valid()
 }
 
 // WithCredentials returns a derived context carrying creds. Exposed
@@ -77,6 +95,16 @@ func decodeSubsonicPassword(v string) string {
 	return string(b)
 }
 
+// extractBearer returns the token from an `Authorization: Bearer …`
+// header, or "" if the header isn't a Bearer form.
+func extractBearer(r *http.Request) string {
+	raw, found := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if !found {
+		return ""
+	}
+	return strings.TrimSpace(raw)
+}
+
 // extractBasicAuth decodes a standard `Authorization: Basic` header.
 func extractBasicAuth(r *http.Request) (user, pass string, ok bool) {
 	raw, found := strings.CutPrefix(r.Header.Get("Authorization"), "Basic ")
@@ -91,20 +119,25 @@ func extractBasicAuth(r *http.Request) (user, pass string, ok bool) {
 	return user, pass, ok && user != "" && pass != ""
 }
 
-// extractCredentials returns the (user, password) pair carried by r,
-// if any. See the package doc for the resolution order.
+// extractCredentials returns the credentials carried by r, if any.
+// See the package doc for the resolution order.
 func extractCredentials(r *http.Request) Credentials {
-	// 1. HTTP Basic header — carries both halves on its own.
+	// 1. Bearer token — no companion username needed, forwarded as-is.
+	if tok := extractBearer(r); tok != "" {
+		return Credentials{BearerToken: tok}
+	}
+
+	// 2. HTTP Basic header — (user, app-token) pair in one header.
 	if u, p, ok := extractBasicAuth(r); ok {
 		return Credentials{Username: u, Password: p}
 	}
 
-	// 2. Subsonic `?u=` + `?p=` (with optional `enc:<hex>`).
+	// 3. Subsonic `?u=` + `?p=` (with optional `enc:<hex>`).
 	q := r.URL.Query()
 	user := q.Get("u")
 	password := decodeSubsonicPassword(q.Get("p"))
 
-	// 3. POST form body fallback.
+	// 4. POST form body fallback.
 	if r.Method == http.MethodPost && (user == "" || password == "") {
 		if err := r.ParseForm(); err == nil {
 			if user == "" {
@@ -154,7 +187,7 @@ func Middleware(next http.Handler) http.Handler {
 				"token+salt HMAC auth is not supported; pass your OpenCloud app token as ?u=<user>&p=<password> (or via HTTP Basic Auth)")
 			return
 		}
-		if c := extractCredentials(r); c.Username != "" && c.Password != "" {
+		if c := extractCredentials(r); c.Valid() {
 			r = r.WithContext(WithCredentials(r.Context(), c))
 		}
 		next.ServeHTTP(w, r)

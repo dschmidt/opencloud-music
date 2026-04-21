@@ -71,15 +71,17 @@ func New(baseURL string, insecure bool) (*Client, error) {
 	}, nil
 }
 
-// authCtx returns a context that carries the current request's
-// (username, token) pair in the form libregraph expects. OpenCloud's
-// Graph endpoints accept app tokens via HTTP Basic Auth exactly the
-// same way they accept a regular password — the app token simply
-// substitutes for the user's primary password.
+// authCtx returns a context carrying the current request's credential
+// in the form libregraph expects. Bearer tokens go in via
+// ContextAccessToken (emitted as `Authorization: Bearer …`);
+// (username, app-token) pairs go in via ContextBasicAuth.
 func (c *Client) authCtx(ctx context.Context) (context.Context, error) {
 	creds, ok := auth.FromContext(ctx)
 	if !ok {
 		return nil, errors.New("graph: no credentials on request context (auth middleware missing?)")
+	}
+	if creds.IsBearer() {
+		return context.WithValue(ctx, libregraph.ContextAccessToken, creds.BearerToken), nil
 	}
 	return context.WithValue(ctx, libregraph.ContextBasicAuth, libregraph.BasicAuth{
 		UserName: creds.Username,

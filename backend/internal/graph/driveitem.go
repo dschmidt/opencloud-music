@@ -43,7 +43,7 @@ func (c *Client) GetDriveItem(ctx context.Context, resourceID string) (*libregra
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(creds.Username, creds.Password)
+	applyAuth(req, creds)
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.httpClient.Do(req)
@@ -68,4 +68,15 @@ func splitResourceID(id string) (drive, item string, ok bool) {
 		return "", "", false
 	}
 	return drive, item, true
+}
+
+// applyAuth sets the outbound Authorization header based on the
+// credential flavour the auth middleware captured — Bearer for OIDC
+// access tokens forwarded from the web UI, Basic for app-token auth.
+func applyAuth(req *http.Request, creds auth.Credentials) {
+	if creds.IsBearer() {
+		req.Header.Set("Authorization", "Bearer "+creds.BearerToken)
+		return
+	}
+	req.SetBasicAuth(creds.Username, creds.Password)
 }
