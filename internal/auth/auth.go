@@ -21,12 +21,12 @@
 //  3. `u` / `p` in a POST form body — same rules, read from the form
 //     body after ParseForm.
 //
-// Explicitly rejected (HTTP 200 + Subsonic error 42 "auth mechanism not
-// supported"):
+// Explicitly rejected (HTTP 200 + Subsonic error 42):
 //
 //   - Legacy HMAC (`?u=X&t=<md5(pw+salt)>&s=<salt>`). The server
-//     cannot validate these because OpenCloud app tokens are opaque
-//     to the music service — we have nothing to hash.
+//     cannot validate these because OpenCloud app tokens never leave
+//     OpenCloud in plaintext — we have nothing to hash against the
+//     client's salt.
 package auth
 
 import (
@@ -35,6 +35,8 @@ import (
 	"encoding/hex"
 	"net/http"
 	"strings"
+
+	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
 )
 
 // Credentials is the (username, app-token) pair forwarded to
@@ -117,9 +119,7 @@ func extractCredentials(r *http.Request) Credentials {
 }
 
 // usedHMACAuth reports whether the request tries to use the classic
-// Subsonic token-plus-salt HMAC challenge. We can't honour that scheme
-// because OpenCloud app tokens never leave OpenCloud in plaintext —
-// we have nothing to hash.
+// Subsonic token-plus-salt HMAC challenge.
 func usedHMACAuth(r *http.Request) bool {
 	q := r.URL.Query()
 	if q.Get("t") != "" || q.Get("s") != "" {
@@ -144,13 +144,14 @@ func usedHMACAuth(r *http.Request) bool {
 // Subsonic error themselves.
 //
 // Requests that try to use the unsupported HMAC auth flow are rejected
-// upfront with a Subsonic-formatted failure envelope so clients get a
-// clear "use apiKey instead" message rather than a confusing
-// missing-parameter error.
+// upfront with a Subsonic-formatted failure envelope (code 42) so
+// clients get a clear "use app-token auth instead" message rather
+// than a confusing missing-parameter error further down the chain.
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if usedHMACAuth(r) {
-			writeHMACRejection(w)
+			proto.WriteError(w, proto.ErrAuthNotSupported,
+				"token+salt HMAC auth is not supported; pass your OpenCloud app token as ?u=<user>&p=<password> (or via HTTP Basic Auth)")
 			return
 		}
 		if c := extractCredentials(r); c.Username != "" && c.Password != "" {
@@ -158,19 +159,4 @@ func Middleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-// writeHMACRejection emits a Subsonic-formatted failure (code 42) so
-// clients receive the expected JSON envelope. Kept here rather than in
-// subsonic/envelope.go to avoid the import cycle and because this is
-// the only place in auth/ that produces a protocol response.
-func writeHMACRejection(w http.ResponseWriter) {
-	const body = `{"subsonic-response":{` +
-		`"status":"failed","version":"1.16.1","type":"opencloud-music",` +
-		`"serverVersion":"0.1.0","openSubsonic":true,` +
-		`"error":{"code":42,"message":"token+salt HMAC auth is not supported; pass your OpenCloud app token as ?u=<user>&p=<password> (or via HTTP Basic Auth)"}` +
-		`}}`
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(body))
 }

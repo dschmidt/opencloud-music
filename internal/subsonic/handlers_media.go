@@ -6,6 +6,7 @@ import (
 	libregraph "github.com/opencloud-eu/libre-graph-api-go"
 
 	"github.com/opencloud-eu/opencloud-music/internal/auth"
+	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
 )
 
 // resolveSong looks up a single driveItem by its ID via a minimal
@@ -48,27 +49,27 @@ func (s *Server) resolveSong(r *http.Request, id string) (*libregraph.DriveItem,
 func (s *Server) Stream(w http.ResponseWriter, r *http.Request, params StreamParams) {
 	creds, ok := auth.FromContext(r.Context())
 	if !ok {
-		writeError(w, ErrMissingParam, "u (username) and p (app token) are required")
+		proto.WriteError(w, proto.ErrMissingParam, "u (username) and p (app token) are required")
 		return
 	}
 	if params.Id == "" {
-		writeError(w, ErrMissingParam, "id is required")
+		proto.WriteError(w, proto.ErrMissingParam, "id is required")
 		return
 	}
 	item, err := s.resolveSong(r, params.Id)
 	if err != nil {
 		s.logger.Warn().Err(err).Str("id", params.Id).Msg("stream: lookup failed")
-		writeError(w, ErrGeneric, "failed to resolve song")
+		proto.WriteError(w, proto.ErrGeneric, "failed to resolve song")
 		return
 	}
 	if item == nil {
-		writeError(w, ErrNotFound, "song not found")
+		proto.WriteError(w, proto.ErrNotFound, "song not found")
 		return
 	}
 	webDav := driveItemDownloadURL(s.publicBaseURL, item)
 	if webDav == "" {
 		s.logger.Warn().Str("id", params.Id).Msg("stream: could not derive WebDAV URL from driveItem")
-		writeError(w, ErrGeneric, "song has no download URL")
+		proto.WriteError(w, proto.ErrGeneric, "song has no download URL")
 		return
 	}
 	if err := s.proxy.Serve(r.Context(), webDav, creds.Username, creds.Password, w, r); err != nil {
@@ -81,7 +82,7 @@ func (s *Server) Stream(w http.ResponseWriter, r *http.Request, params StreamPar
 // (POST /rest/stream)
 func (s *Server) PostStream(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		writeError(w, ErrGeneric, "could not parse form body")
+		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
 	s.Stream(w, r, StreamParams{Id: r.PostForm.Get("id")})
@@ -100,7 +101,7 @@ func (s *Server) Download(w http.ResponseWriter, r *http.Request, params Downloa
 // (POST /rest/download)
 func (s *Server) PostDownload(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		writeError(w, ErrGeneric, "could not parse form body")
+		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
 	s.Stream(w, r, StreamParams{Id: r.PostForm.Get("id")})

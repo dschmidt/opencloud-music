@@ -8,6 +8,7 @@ import (
 	libregraph "github.com/opencloud-eu/libre-graph-api-go"
 
 	"github.com/opencloud-eu/opencloud-music/internal/auth"
+	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
 )
 
 // coverPreviewDefaultSize is the thumbnail edge we request from
@@ -33,11 +34,11 @@ const coverPreviewDefaultSize = 256
 func (s *Server) GetCoverArt(w http.ResponseWriter, r *http.Request, params GetCoverArtParams) {
 	creds, ok := auth.FromContext(r.Context())
 	if !ok {
-		writeError(w, ErrMissingParam, "u (username) and p (app token) are required")
+		proto.WriteError(w, proto.ErrMissingParam, "u (username) and p (app token) are required")
 		return
 	}
 	if params.Id == "" {
-		writeError(w, ErrMissingParam, "id is required")
+		proto.WriteError(w, proto.ErrMissingParam, "id is required")
 		return
 	}
 	size := coverPreviewDefaultSize
@@ -48,17 +49,17 @@ func (s *Server) GetCoverArt(w http.ResponseWriter, r *http.Request, params GetC
 	item, err := s.resolveCoverSource(r.Context(), params.Id)
 	if err != nil {
 		s.logger.Warn().Err(err).Str("id", params.Id).Msg("getCoverArt: resolution failed")
-		writeError(w, ErrGeneric, "failed to resolve cover art")
+		proto.WriteError(w, proto.ErrGeneric, "failed to resolve cover art")
 		return
 	}
 	if item == nil {
-		writeError(w, ErrNotFound, "no cover art for id")
+		proto.WriteError(w, proto.ErrNotFound, "no cover art for id")
 		return
 	}
 
 	previewURL := driveItemPreviewURL(s.publicBaseURL, item, size)
 	if previewURL == "" {
-		writeError(w, ErrNotFound, "no cover art for id")
+		proto.WriteError(w, proto.ErrNotFound, "no cover art for id")
 		return
 	}
 	if err := s.proxy.Serve(r.Context(), previewURL, creds.Username, creds.Password, w, r); err != nil {
@@ -71,7 +72,7 @@ func (s *Server) GetCoverArt(w http.ResponseWriter, r *http.Request, params GetC
 // (POST /rest/getCoverArt)
 func (s *Server) PostGetCoverArt(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		writeError(w, ErrGeneric, "could not parse form body")
+		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
 	p := GetCoverArtParams{Id: r.PostForm.Get("id")}

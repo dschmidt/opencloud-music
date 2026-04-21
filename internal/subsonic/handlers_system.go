@@ -1,19 +1,23 @@
 package subsonic
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
+)
 
 // Ping is the canonical Subsonic health/auth probe.
 //
 // (GET /rest/ping)
 func (s *Server) Ping(w http.ResponseWriter, _ *http.Request) {
-	writeOK(w, nil)
+	proto.WriteOK(w, nil)
 }
 
 // PostPing mirrors Ping for POST clients.
 //
 // (POST /rest/ping)
 func (s *Server) PostPing(w http.ResponseWriter, _ *http.Request) {
-	writeOK(w, nil)
+	proto.WriteOK(w, nil)
 }
 
 // GetLicense always reports a valid license — OpenCloud is free software,
@@ -22,7 +26,7 @@ func (s *Server) PostPing(w http.ResponseWriter, _ *http.Request) {
 //
 // (GET /rest/getLicense)
 func (s *Server) GetLicense(w http.ResponseWriter, _ *http.Request) {
-	writeOK(w, map[string]any{
+	proto.WriteOK(w, map[string]any{
 		"license": map[string]any{
 			"valid": true,
 		},
@@ -55,7 +59,7 @@ var openSubsonicExtensions = []map[string]any{}
 //
 // (GET /rest/getOpenSubsonicExtensions)
 func (s *Server) GetOpenSubsonicExtensions(w http.ResponseWriter, _ *http.Request) {
-	writeOK(w, map[string]any{
+	proto.WriteOK(w, map[string]any{
 		"openSubsonicExtensions": openSubsonicExtensions,
 	})
 }

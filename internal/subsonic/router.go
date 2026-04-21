@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
 )
 
 // Mount registers every /rest/* Subsonic route against the given chi
@@ -24,10 +25,10 @@ func Mount(r chi.Router, s *Server) {
 	r.Use(fillSearch3Query)
 	HandlerFromMux(s, r)
 	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
-		writeError(w, ErrNotFound, "no such endpoint: "+req.URL.Path)
+		proto.WriteError(w, proto.ErrNotFound, "no such endpoint: "+req.URL.Path)
 	})
 	r.MethodNotAllowed(func(w http.ResponseWriter, req *http.Request) {
-		writeError(w, ErrGeneric, "method not allowed for "+req.URL.Path)
+		proto.WriteError(w, proto.ErrGeneric, "method not allowed for "+req.URL.Path)
 	})
 }
 
@@ -80,4 +81,3 @@ func stripViewSuffix(next http.Handler) http.Handler {
 		next.ServeHTTP(w, clone)
 	})
 }
-

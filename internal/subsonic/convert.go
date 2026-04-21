@@ -89,7 +89,7 @@ func decode(id, prefix string) ([]string, error) {
 	return strings.Split(string(raw), idFieldSep), nil
 }
 
-func artistID(albumArtist string) string    { return artistIDPrefix + encode(albumArtist) }
+func artistID(albumArtist string) string       { return artistIDPrefix + encode(albumArtist) }
 func albumID(albumArtist, album string) string { return albumIDPrefix + encode(albumArtist, album) }
 
 // decodeArtistID recovers the albumArtist string from a virtual ar-* ID.
@@ -219,4 +219,3 @@ func deref(p *string) string {
 	}
 	return *p
 }
-

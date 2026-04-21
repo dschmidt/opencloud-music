@@ -1,4 +1,9 @@
-package subsonic
+// Package proto holds the Subsonic response-envelope writer and the set
+// of protocol error codes. It is kept separate from the parent
+// `subsonic` package so that non-handler code paths (notably the auth
+// middleware) can emit a Subsonic-formatted failure without taking a
+// dependency on the generated types that live alongside the handlers.
+package proto
 
 import (
 	"encoding/json"
@@ -9,9 +14,27 @@ import (
 
 // Subsonic protocol constants advertised in every response envelope.
 const (
-	SubsonicAPIVersion = "1.16.1"
-	ServerType         = "opencloud-music"
-	ServerVersion      = "0.1.0"
+	APIVersion    = "1.16.1"
+	ServerType    = "opencloud-music"
+	ServerVersion = "0.1.0"
+)
+
+// Subsonic error codes (see
+// https://opensubsonic.netlify.app/docs/responses/error/). Every failure
+// envelope must carry one of these codes.
+const (
+	ErrGeneric          = 0
+	ErrMissingParam     = 10
+	ErrClientVersionOld = 20
+	ErrServerVersionOld = 30
+	ErrBadCredentials   = 40
+	ErrLDAPTokenAuth    = 41
+	ErrAuthNotSupported = 42
+	ErrConflictingAuth  = 43
+	ErrInvalidAPIKey    = 44
+	ErrNotAuthorized    = 50
+	ErrTrialExpired     = 60
+	ErrNotFound         = 70
 )
 
 // base is the set of metadata fields every Subsonic response carries. It
@@ -27,7 +50,7 @@ type base struct {
 func baseOK() base {
 	return base{
 		Status:        "ok",
-		Version:       SubsonicAPIVersion,
+		Version:       APIVersion,
 		Type:          ServerType,
 		ServerVersion: ServerVersion,
 		OpenSubsonic:  true,
@@ -71,9 +94,9 @@ func (b baseBody) MarshalJSON() ([]byte, error) {
 	return json.Marshal(merged)
 }
 
-// writeOK renders a success envelope. payload may be nil for endpoints
+// WriteOK renders a success envelope. payload may be nil for endpoints
 // that only need to signal success (e.g. ping, scrobble).
-func writeOK(w http.ResponseWriter, payload map[string]any) {
+func WriteOK(w http.ResponseWriter, payload map[string]any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(envelope{
@@ -81,9 +104,9 @@ func writeOK(w http.ResponseWriter, payload map[string]any) {
 	})
 }
 
-// writeError renders a failure envelope. Subsonic clients expect HTTP
+// WriteError renders a failure envelope. Subsonic clients expect HTTP
 // 200 even on protocol errors (they read the `status` field).
-func writeError(w http.ResponseWriter, code int, msg string) {
+func WriteError(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(envelope{
@@ -99,9 +122,9 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 	})
 }
 
-// writeJSONError is used for non-Subsonic HTTP errors (bad Content-Type,
+// WriteJSONError is used for non-Subsonic HTTP errors (bad Content-Type,
 // malformed request) that never reach the envelope layer.
-func writeJSONError(w http.ResponseWriter, status int, msg string) {
+func WriteJSONError(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_, _ = fmt.Fprintf(w, `{"error":%q}`, msg)

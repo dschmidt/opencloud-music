@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	libregraph "github.com/opencloud-eu/libre-graph-api-go"
+	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
 )
 
 // albumEntry is the Subsonic `album` payload shape used across the
@@ -59,13 +60,13 @@ func (s *Server) GetAlbumList2(w http.ResponseWriter, r *http.Request, params Ge
 	switch string(params.Type) {
 	case "byGenre":
 		if params.Genre == nil || *params.Genre == "" {
-			writeError(w, ErrMissingParam, "genre is required for byGenre")
+			proto.WriteError(w, proto.ErrMissingParam, "genre is required for byGenre")
 			return
 		}
 		query += " AND audio.genre:" + quote(*params.Genre)
 	case "byYear":
 		if params.FromYear == nil || params.ToYear == nil {
-			writeError(w, ErrMissingParam, "fromYear and toYear are required for byYear")
+			proto.WriteError(w, proto.ErrMissingParam, "fromYear and toYear are required for byYear")
 			return
 		}
 		// OpenCloud's KQL grammar only supports equality right now;
@@ -84,11 +85,11 @@ func (s *Server) GetAlbumList2(w http.ResponseWriter, r *http.Request, params Ge
 	}
 	if err != nil {
 		s.logger.Warn().Err(err).Str("type", string(params.Type)).Msg("getAlbumList2: failed")
-		writeError(w, ErrGeneric, "failed to list albums")
+		proto.WriteError(w, proto.ErrGeneric, "failed to list albums")
 		return
 	}
 
-	writeOK(w, map[string]any{
+	proto.WriteOK(w, map[string]any{
 		"albumList2": map[string]any{"album": out},
 	})
 }
@@ -259,7 +260,7 @@ func (s *Server) hitsAlbumList(ctx context.Context, query string, offset, size i
 func (s *Server) PostGetAlbumList2(w http.ResponseWriter, r *http.Request) {
 	// Read required params out of the form body and delegate.
 	if err := r.ParseForm(); err != nil {
-		writeError(w, ErrGeneric, "could not parse form body")
+		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
 	p := GetAlbumList2Params{Type: GetAlbumList2ParamsType(r.PostForm.Get("type"))}
@@ -300,7 +301,7 @@ func (s *Server) GetRandomSongs(w http.ResponseWriter, r *http.Request, params G
 	hits, err := s.graph.SearchHits(r.Context(), query, 0, 500)
 	if err != nil {
 		s.logger.Warn().Err(err).Msg("getRandomSongs: search failed")
-		writeError(w, ErrGeneric, "failed to list random songs")
+		proto.WriteError(w, proto.ErrGeneric, "failed to list random songs")
 		return
 	}
 	items := make([]*libregraph.DriveItem, 0, len(hits.Hits))
@@ -317,7 +318,7 @@ func (s *Server) GetRandomSongs(w http.ResponseWriter, r *http.Request, params G
 	for _, it := range items {
 		songs = append(songs, driveItemToSong(it))
 	}
-	writeOK(w, map[string]any{
+	proto.WriteOK(w, map[string]any{
 		"randomSongs": map[string]any{"song": songs},
 	})
 }
@@ -327,7 +328,7 @@ func (s *Server) GetRandomSongs(w http.ResponseWriter, r *http.Request, params G
 // (POST /rest/getRandomSongs)
 func (s *Server) PostGetRandomSongs(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		writeError(w, ErrGeneric, "could not parse form body")
+		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
 	p := GetRandomSongsParams{}
@@ -351,7 +352,7 @@ func (s *Server) GetSongsByGenre(w http.ResponseWriter, r *http.Request, params 
 		return
 	}
 	if params.Genre == "" {
-		writeError(w, ErrMissingParam, "genre is required")
+		proto.WriteError(w, proto.ErrMissingParam, "genre is required")
 		return
 	}
 	size := 10
@@ -368,7 +369,7 @@ func (s *Server) GetSongsByGenre(w http.ResponseWriter, r *http.Request, params 
 	hits, err := s.graph.SearchHits(r.Context(), kqlAudio+" AND audio.genre:"+quote(params.Genre), offset, int32(size))
 	if err != nil {
 		s.logger.Warn().Err(err).Str("genre", params.Genre).Msg("getSongsByGenre: search failed")
-		writeError(w, ErrGeneric, "failed to list songs")
+		proto.WriteError(w, proto.ErrGeneric, "failed to list songs")
 		return
 	}
 	songs := make([]map[string]any, 0, len(hits.Hits))
@@ -378,7 +379,7 @@ func (s *Server) GetSongsByGenre(w http.ResponseWriter, r *http.Request, params 
 		}
 		songs = append(songs, driveItemToSong(h.Resource))
 	}
-	writeOK(w, map[string]any{
+	proto.WriteOK(w, map[string]any{
 		"songsByGenre": map[string]any{"song": songs},
 	})
 }
@@ -388,7 +389,7 @@ func (s *Server) GetSongsByGenre(w http.ResponseWriter, r *http.Request, params 
 // (POST /rest/getSongsByGenre)
 func (s *Server) PostGetSongsByGenre(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		writeError(w, ErrGeneric, "could not parse form body")
+		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
 	p := GetSongsByGenreParams{Genre: r.PostForm.Get("genre")}
@@ -453,14 +454,14 @@ func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params Search3P
 		[]libregraph.AggregationOption{artistOpt})
 	if aggErr != nil {
 		s.logger.Warn().Err(aggErr).Msg("search3: aggregate failed")
-		writeError(w, ErrGeneric, "search failed")
+		proto.WriteError(w, proto.ErrGeneric, "search failed")
 		return
 	}
 
 	hits, hitsErr := s.graph.SearchHits(r.Context(), query, 0, int32(songCount))
 	if hitsErr != nil {
 		s.logger.Warn().Err(hitsErr).Msg("search3: hits failed")
-		writeError(w, ErrGeneric, "search failed")
+		proto.WriteError(w, proto.ErrGeneric, "search failed")
 		return
 	}
 
@@ -523,7 +524,7 @@ func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params Search3P
 		songs = append(songs, driveItemToSong(h.Resource))
 	}
 
-	writeOK(w, map[string]any{"searchResult3": map[string]any{
+	proto.WriteOK(w, map[string]any{"searchResult3": map[string]any{
 		"artist": artists,
 		"album":  albums,
 		"song":   songs,
@@ -535,7 +536,7 @@ func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params Search3P
 // (POST /rest/search3)
 func (s *Server) PostSearch3(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		writeError(w, ErrGeneric, "could not parse form body")
+		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
 	p := Search3Params{Query: r.PostForm.Get("query")}

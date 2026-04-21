@@ -9,6 +9,7 @@ import (
 	libregraph "github.com/opencloud-eu/libre-graph-api-go"
 
 	"github.com/opencloud-eu/opencloud-music/internal/auth"
+	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
 )
 
 // Every audio query in the library scope is prefixed with this KQL
@@ -50,7 +51,7 @@ func (s *Server) requireAuth(w http.ResponseWriter, r *http.Request) bool {
 	if _, ok := auth.FromContext(r.Context()); ok {
 		return true
 	}
-	writeError(w, ErrMissingParam, "u (username) and p (app token) are required")
+	proto.WriteError(w, proto.ErrMissingParam, "u (username) and p (app token) are required")
 	return false
 }
 
@@ -64,7 +65,7 @@ func (s *Server) GetMusicFolders(w http.ResponseWriter, r *http.Request) {
 	if !s.requireAuth(w, r) {
 		return
 	}
-	writeOK(w, map[string]any{
+	proto.WriteOK(w, map[string]any{
 		"musicFolders": map[string]any{
 			"musicFolder": []map[string]any{
 				{"id": 1, "name": "Music"},
@@ -117,7 +118,7 @@ func (s *Server) GetArtists(w http.ResponseWriter, r *http.Request, _ GetArtists
 		[]libregraph.AggregationOption{artistOpt})
 	if err != nil {
 		s.logger.Warn().Err(err).Msg("getArtists: aggregate failed")
-		writeError(w, ErrGeneric, "failed to list artists")
+		proto.WriteError(w, proto.ErrGeneric, "failed to list artists")
 		return
 	}
 	grouped := map[string][]map[string]any{}
@@ -171,7 +172,7 @@ func (s *Server) GetArtists(w http.ResponseWriter, r *http.Request, _ GetArtists
 			"artist": artists,
 		})
 	}
-	writeOK(w, map[string]any{
+	proto.WriteOK(w, map[string]any{
 		"artists": map[string]any{
 			"ignoredArticles": "",
 			"index":           indexes,
@@ -195,12 +196,12 @@ func (s *Server) GetArtist(w http.ResponseWriter, r *http.Request, params GetArt
 		return
 	}
 	if params.Id == "" {
-		writeError(w, ErrMissingParam, "id is required")
+		proto.WriteError(w, proto.ErrMissingParam, "id is required")
 		return
 	}
 	name, err := decodeArtistID(params.Id)
 	if err != nil {
-		writeError(w, ErrNotFound, "artist not found")
+		proto.WriteError(w, proto.ErrNotFound, "artist not found")
 		return
 	}
 	// Single aggregation: group tracks by audio.album, sum
@@ -214,7 +215,7 @@ func (s *Server) GetArtist(w http.ResponseWriter, r *http.Request, params GetArt
 		[]libregraph.AggregationOption{albumOpt})
 	if err != nil {
 		s.logger.Warn().Err(err).Str("artist", name).Msg("getArtist: aggregate failed")
-		writeError(w, ErrGeneric, "failed to list albums")
+		proto.WriteError(w, proto.ErrGeneric, "failed to list albums")
 		return
 	}
 	albums := make([]map[string]any, 0)
@@ -248,7 +249,7 @@ func (s *Server) GetArtist(w http.ResponseWriter, r *http.Request, params GetArt
 	sort.Slice(albums, func(i, j int) bool {
 		return strings.ToLower(albums[i]["name"].(string)) < strings.ToLower(albums[j]["name"].(string))
 	})
-	writeOK(w, map[string]any{
+	proto.WriteOK(w, map[string]any{
 		"artist": map[string]any{
 			"id":         params.Id,
 			"name":       name,
@@ -264,7 +265,7 @@ func (s *Server) GetArtist(w http.ResponseWriter, r *http.Request, params GetArt
 // (POST /rest/getArtist)
 func (s *Server) PostGetArtist(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		writeError(w, ErrGeneric, "could not parse form body")
+		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
 	s.GetArtist(w, r, GetArtistParams{Id: r.PostForm.Get("id")})
@@ -281,19 +282,19 @@ func (s *Server) GetAlbum(w http.ResponseWriter, r *http.Request, params GetAlbu
 		return
 	}
 	if params.Id == "" {
-		writeError(w, ErrMissingParam, "id is required")
+		proto.WriteError(w, proto.ErrMissingParam, "id is required")
 		return
 	}
 	artist, album, err := decodeAlbumID(params.Id)
 	if err != nil {
-		writeError(w, ErrNotFound, "album not found")
+		proto.WriteError(w, proto.ErrNotFound, "album not found")
 		return
 	}
 	query := kqlAudio + ` AND audio.artist:` + quote(artist) + ` AND audio.album:` + quote(album)
 	hits, err := s.graph.SearchHits(r.Context(), query, 0, 500)
 	if err != nil {
 		s.logger.Warn().Err(err).Str("album", album).Msg("getAlbum: search failed")
-		writeError(w, ErrGeneric, "failed to list album tracks")
+		proto.WriteError(w, proto.ErrGeneric, "failed to list album tracks")
 		return
 	}
 
@@ -327,7 +328,7 @@ func (s *Server) GetAlbum(w http.ResponseWriter, r *http.Request, params GetAlbu
 	if len(tracks) > 0 && tracks[0].Audio != nil && tracks[0].Audio.Genre != nil {
 		payload["genre"] = *tracks[0].Audio.Genre
 	}
-	writeOK(w, map[string]any{"album": payload})
+	proto.WriteOK(w, map[string]any{"album": payload})
 }
 
 // PostGetAlbum mirrors GetAlbum.
@@ -335,7 +336,7 @@ func (s *Server) GetAlbum(w http.ResponseWriter, r *http.Request, params GetAlbu
 // (POST /rest/getAlbum)
 func (s *Server) PostGetAlbum(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		writeError(w, ErrGeneric, "could not parse form body")
+		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
 	s.GetAlbum(w, r, GetAlbumParams{Id: r.PostForm.Get("id")})
@@ -358,7 +359,7 @@ func (s *Server) GetGenres(w http.ResponseWriter, r *http.Request) {
 		[]libregraph.AggregationOption{genreOpt})
 	if err != nil {
 		s.logger.Warn().Err(err).Msg("getGenres: aggregate failed")
-		writeError(w, ErrGeneric, "failed to list genres")
+		proto.WriteError(w, proto.ErrGeneric, "failed to list genres")
 		return
 	}
 	var genres []map[string]any
@@ -394,7 +395,7 @@ func (s *Server) GetGenres(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	writeOK(w, map[string]any{
+	proto.WriteOK(w, map[string]any{
 		"genres": map[string]any{"genre": genres},
 	})
 }
@@ -459,20 +460,20 @@ func (s *Server) GetSong(w http.ResponseWriter, r *http.Request, params GetSongP
 		return
 	}
 	if params.Id == "" {
-		writeError(w, ErrMissingParam, "id is required")
+		proto.WriteError(w, proto.ErrMissingParam, "id is required")
 		return
 	}
 	item, err := s.resolveSong(r, params.Id)
 	if err != nil {
 		s.logger.Warn().Err(err).Str("id", params.Id).Msg("getSong: lookup failed")
-		writeError(w, ErrGeneric, "failed to resolve song")
+		proto.WriteError(w, proto.ErrGeneric, "failed to resolve song")
 		return
 	}
 	if item == nil {
-		writeError(w, ErrNotFound, "song not found")
+		proto.WriteError(w, proto.ErrNotFound, "song not found")
 		return
 	}
-	writeOK(w, map[string]any{"song": driveItemToSong(item)})
+	proto.WriteOK(w, map[string]any{"song": driveItemToSong(item)})
 }
 
 // PostGetSong mirrors GetSong for POST clients.
@@ -480,7 +481,7 @@ func (s *Server) GetSong(w http.ResponseWriter, r *http.Request, params GetSongP
 // (POST /rest/getSong)
 func (s *Server) PostGetSong(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		writeError(w, ErrGeneric, "could not parse form body")
+		proto.WriteError(w, proto.ErrGeneric, "could not parse form body")
 		return
 	}
 	s.GetSong(w, r, GetSongParams{Id: r.PostForm.Get("id")})
