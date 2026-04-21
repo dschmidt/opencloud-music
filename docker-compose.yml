@@ -1,0 +1,16 @@
+services:
+  music:
+    build: .
+    ports:
+      - "9110:9110"
+    environment:
+      MUSIC_HTTP_ADDR: ":9110"
+      # Point the music service at your existing OpenCloud instance. The
+      # default assumes it runs on the Docker host at :9200 with a
+      # self-signed cert (hence OC_INSECURE=true). Override via a .env
+      # file or inline before `docker compose up` for a different setup.
+      OC_URL: "https://host.docker.internal:9200"
+      OC_INSECURE: "true"
+      MUSIC_LOG_LEVEL: "debug"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

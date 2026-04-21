@@ -1,0 +1,26 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+  exclusions:
+    rules:
+      # Generated code — ignore lint issues from oapi-codegen output.
+      - path: internal/subsonic/generated\.go
+        linters:
+          - errcheck
+          - govet
+          - staticcheck
+          - unused
+          - ineffassign
+
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    paths:
+      - internal/subsonic/generated\.go
