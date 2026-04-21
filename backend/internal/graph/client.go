@@ -28,9 +28,15 @@ import (
 
 // Client bundles a libregraph.APIClient with the base URL it talks to so
 // handlers can run Graph calls without touching the underlying config.
+// The baseURL + httpClient pair is kept alongside the generated
+// libregraph client for hand-rolled calls that libregraph doesn't
+// cover (notably the v1.0 driveItem endpoint, which lives outside the
+// v1beta1 surface libregraph exposes).
 type Client struct {
-	api *libregraph.APIClient
-	log log.Logger
+	api        *libregraph.APIClient
+	baseURL    string
+	httpClient *http.Client
+	log        log.Logger
 }
 
 // New constructs a Graph client that issues requests against baseURL
@@ -49,14 +55,20 @@ func New(baseURL string, insecure bool) (*Client, error) {
 
 	cfg := libregraph.NewConfiguration()
 	cfg.Servers = libregraph.ServerConfigurations{{URL: u.String()}}
+	httpClient := http.DefaultClient
 	if insecure {
-		cfg.HTTPClient = &http.Client{
+		httpClient = &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // opt-in for dev self-signed
 			},
 		}
+		cfg.HTTPClient = httpClient
 	}
-	return &Client{api: libregraph.NewAPIClient(cfg)}, nil
+	return &Client{
+		api:        libregraph.NewAPIClient(cfg),
+		baseURL:    u.String(),
+		httpClient: httpClient,
+	}, nil
 }
 
 // authCtx returns a context that carries the current request's

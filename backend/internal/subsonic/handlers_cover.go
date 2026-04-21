@@ -130,27 +130,10 @@ func (s *Server) resolveCoverSource(ctx context.Context, id string) (*libregraph
 	}
 }
 
-// resolveSongByID mirrors Server.resolveSong but without the HTTP
-// request context plumbing — it's shared between stream/download and
-// cover art. Keep the two implementations in sync.
+// resolveSongByID fetches the driveItem for a Subsonic song ID.
+// Shared between stream/download and cover art.
 func (s *Server) resolveSongByID(ctx context.Context, id string) (*libregraph.DriveItem, error) {
-	hits, err := s.graph.SearchHits(ctx, "id:"+quote(id), 0, 1)
-	if err != nil {
-		return nil, err
-	}
-	if r := firstResource(hits); r != nil {
-		return r, nil
-	}
-	scan, err := s.graph.SearchHits(ctx, kqlAudio, 0, 500)
-	if err != nil {
-		return nil, err
-	}
-	for _, h := range scan.Hits {
-		if h.Resource != nil && h.Resource.Id != nil && *h.Resource.Id == id {
-			return h.Resource, nil
-		}
-	}
-	return nil, nil
+	return s.graph.GetDriveItem(ctx, id)
 }
 
 func firstResource(c *libregraph.SearchHitsContainer) *libregraph.DriveItem {

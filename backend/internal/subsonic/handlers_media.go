@@ -10,37 +10,9 @@ import (
 	"github.com/opencloud-eu/opencloud-music/internal/subsonic/proto"
 )
 
-// resolveSong looks up a single driveItem by its ID via a minimal
-// Graph search. Returns (nil, nil) if no item matched.
-//
-// OpenCloud's KQL grammar doesn't (yet) expose driveItem IDs as a
-// searchable field — the `id:` syntax is parsed but hits zero
-// results. We therefore accept a fallback: when `id:<x>` comes back
-// empty but x looks like a driveItem resource ID, scan a broader
-// audio page and match client-side. That's not scalable but gets us
-// playback working until the upstream KQL grammar lands a proper
-// `id:` predicate.
+// resolveSong fetches the driveItem for a Subsonic song ID.
 func (s *Server) resolveSong(r *http.Request, id string) (*libregraph.DriveItem, error) {
-	hits, err := s.graph.SearchHits(r.Context(), "id:"+quote(id), 0, 1)
-	if err != nil {
-		return nil, err
-	}
-	if hits != nil && len(hits.Hits) > 0 && hits.Hits[0].Resource != nil {
-		return hits.Hits[0].Resource, nil
-	}
-
-	// Fallback: scan recent audio hits and match by ID in memory.
-	s.logger.Debug().Str("id", id).Msg("resolveSong: id: query returned no hits, falling back to scan")
-	scan, err := s.graph.SearchHits(r.Context(), "mediatype:audio", 0, 500)
-	if err != nil {
-		return nil, err
-	}
-	for _, h := range scan.Hits {
-		if h.Resource != nil && h.Resource.Id != nil && *h.Resource.Id == id {
-			return h.Resource, nil
-		}
-	}
-	return nil, nil
+	return s.graph.GetDriveItem(r.Context(), id)
 }
 
 // Stream fetches the driveItem for the given song ID and proxies its
