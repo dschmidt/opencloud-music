@@ -3,7 +3,14 @@
 > [!WARNING]
 > ## 🚧 This does NOT work with any released OpenCloud 🚧
 >
-> The music service depends on OpenCloud changes that are **not yet in any release** and, in several cases, **not yet upstreamed**. A single released version that works end-to-end does not exist yet. Until the required pieces land, the only way to run this is against OpenCloud and `libre-graph-api-go` built from matching feature branches — expect broken listings, wrong counts, or empty responses against a stock build.
+> The music service depends on OpenCloud changes that are **not yet in any release** and, in several cases, **not yet upstreamed**. A single released version that works end-to-end does not exist yet. Until the required pieces land, the only way to run this is against:
+>
+> - `github.com/dschmidt/opencloud` @ `feat/graph-search-full`
+> - `github.com/dschmidt/libre-graph-api` @ `feat/graph-search-full` (drives the regenerated `libre-graph-api-go` SDK)
+>
+> Expect broken listings, wrong counts, or empty responses against any stock build. See [Local dev stack (`bootstrap.sh`)](#local-dev-stack-bootstrapsh) for a one-command setup that pulls everything together.
+>
+> While the dust is still settling, **this repo may see force-pushes and history rewrites** on any branch, including `main`. Rebase your local clone rather than expecting fast-forward merges.
 
 OpenSubsonic-compatible music server for [OpenCloud](https://opencloud.eu). It translates the [Subsonic API](https://opensubsonic.netlify.app/) that native music clients speak (Symfonium, play:Sub, Feishin, Substreamer, …) into OpenCloud Graph search + WebDAV calls, so any audio file in your OpenCloud spaces becomes streamable on any Subsonic-capable client.
 
