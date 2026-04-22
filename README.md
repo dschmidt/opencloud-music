@@ -95,7 +95,46 @@ file /tmp/song.bin   # expect "Audio file ..."
 | `MUSIC_LOG_LEVEL` | `panic` / `fatal` / `error` / `warn` / `info` / `debug` / `trace`. `OC_LOG_LEVEL` takes precedence when set. | `info` |
 | `MUSIC_DEBUG_ADDR` | Bind address of the debug / metrics server. | `127.0.0.1:9268` |
 
-Authentication on the Subsonic endpoint is **HTTP Basic** with the OpenCloud app token — or the classic Subsonic `?u=<user>&p=<token>` / `?u=<user>&p=enc:<hex>` query variants. The legacy Subsonic `t`+`s` HMAC scheme is rejected with error 42 (OpenCloud app tokens never leave OpenCloud in plaintext, so there's nothing to hash against).
+Authentication on the Subsonic endpoint accepts three credential shapes:
+
+1. `Authorization: Bearer <oidc-access-token>` — used by the bundled
+   web UI extension, which already holds a token scoped to OpenCloud
+   and just pipes it through. No companion username required; the
+   token is forwarded verbatim to Graph + WebDAV.
+2. `Authorization: Basic <base64(user:app-token)>`, or
+   `?u=<user>&p=<app-token>` / `?u=<user>&p=enc:<hex>` — the native
+   Subsonic credential shape; `p` carries an OpenCloud app token.
+3. Same pair in a POST form body.
+
+The legacy Subsonic `t`+`s` HMAC scheme is rejected with error 42
+(OpenCloud app tokens never leave OpenCloud in plaintext, so there's
+nothing to hash against).
+
+### Wiring the web UI
+
+The frontend extension at `/music` (in the OpenCloud web UI) calls the
+backend at `/api/music/*`. For that to resolve, OpenCloud's proxy
+needs an `additional_policies` entry pointing at the music service —
+`dev/docker/opencloud.proxy.config.yaml` ships one suitable for local
+dev.
+
+OpenCloud reads its proxy policies from `$OC_CONFIG_DIR/proxy.yaml`
+(default: `~/.opencloud/config/proxy.yaml`). Symlink our file in:
+
+```bash
+mkdir -p ~/.opencloud/config
+ln -sf $PWD/dev/docker/opencloud.proxy.config.yaml \
+       ~/.opencloud/config/proxy.yaml
+```
+
+…then restart OpenCloud. For the Docker flow, mount
+`dev/docker/opencloud.proxy.config.yaml` at `/etc/opencloud/proxy.yaml`
+on the OpenCloud container.
+
+The route is declared `unprotected: true` so OpenCloud's proxy does
+not revalidate or strip the Authorization header before forwarding —
+the music backend does all the auth itself and would lose visibility
+of the user's Bearer token otherwise.
 
 ## Architecture
 

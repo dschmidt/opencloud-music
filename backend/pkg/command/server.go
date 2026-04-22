@@ -80,7 +80,14 @@ func Server(cfg *config.Config) *cobra.Command {
 			// search hits don't carry one.
 			srv := subsonic.NewServer(logger, graphClient, streamProxy)
 			srv.SetPublicBaseURL(cfg.OpenCloud.URL)
+			// Subsonic clients (Symfonium, play:Sub, …) point at the
+			// service directly on /rest/*. The OpenCloud web UI hits
+			// us through the reverse proxy at /api/music/rest/*, so
+			// mount the same handlers under that prefix too.
 			subsonic.Mount(mux, srv)
+			mux.Route("/api/music", func(r chi.Router) {
+				subsonic.Mount(r, srv)
+			})
 
 			server := &stdhttp.Server{
 				Addr:    cfg.HTTP.Addr,

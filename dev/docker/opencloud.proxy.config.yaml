@@ -1,0 +1,19 @@
+additional_policies:
+  - name: default
+    routes:
+      # Proxy every /api/music/* request to the music backend. The
+      # music service forwards the caller's Authorization header
+      # (Bearer from the web UI, or Basic from a Subsonic client) on
+      # to OpenCloud's Graph + WebDAV endpoints itself, so the proxy
+      # is marked unprotected: it's a transparent pass-through and
+      # must not strip or rewrite the Authorization header.
+      #
+      # The default assumes the music backend runs on the same host
+      # as OpenCloud, listening on :9111. If the backend lives in a
+      # container (see docker-compose.yml) and OpenCloud runs on the
+      # host, 127.0.0.1:9111 resolves to the published port. For a
+      # container-in-container setup, swap the host for the docker
+      # service name (e.g. http://music:9111).
+      - endpoint: /api/music
+        backend: http://127.0.0.1:9111
+        unprotected: true
