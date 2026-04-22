@@ -69,7 +69,7 @@ func fillSearch3Query(next http.Handler) http.Handler {
 // Only paths under `/rest/` are rewritten.
 func stripViewSuffix(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !(strings.HasPrefix(r.URL.Path, "/rest/") && strings.HasSuffix(r.URL.Path, ".view")) {
+		if !strings.HasPrefix(r.URL.Path, "/rest/") || !strings.HasSuffix(r.URL.Path, ".view") {
 			next.ServeHTTP(w, r)
 			return
 		}
