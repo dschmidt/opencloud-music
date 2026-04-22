@@ -1,15 +1,21 @@
 FROM golang:1.25-alpine@sha256:8e02eb337d9e0ea459e041f1ee5eece41cbb61f1d83e7d883a3e2fb4862063fa AS builder
 
-WORKDIR /app
-COPY backend/go.mod backend/go.sum ./
+# backend/go.mod's replace for libre-graph-api-go resolves to
+# ../bootstrap/src/libre-graph-api-go-local — materialized by
+# `./bootstrap.sh --prepare` on the host (or the CI job that
+# downloaded the libregraph-go-local artifact before build).
+WORKDIR /src
+COPY bootstrap/src/libre-graph-api-go-local ./bootstrap/src/libre-graph-api-go-local
+COPY backend/go.mod backend/go.sum ./backend/
+WORKDIR /src/backend
 RUN go mod download
 COPY backend/ .
 
 # The Subsonic server stubs are generated from the pinned OpenSubsonic OpenAPI
 # spec and are NOT committed. They must be generated on the host (via `make
 # generate`) or downloaded as a CI artifact before running docker build.
-RUN test -f internal/subsonic/generated.go || { \
-  echo "ERROR: internal/subsonic/generated.go is missing."; \
+RUN test -f internal/subsonic/model/generated.go || { \
+  echo "ERROR: internal/subsonic/model/generated.go is missing."; \
   echo "Run 'make generate' on the host before docker build."; \
   exit 1; }
 

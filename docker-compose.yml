@@ -14,3 +14,16 @@ services:
       MUSIC_LOG_LEVEL: "debug"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  # Apache Tika — used by OpenCloud's search service to extract audio
+  # metadata (ID3 tags → audio.artist / audio.album / …) and the
+  # textual content of other files. bootstrap.sh uses this service
+  # alone (via `docker compose up -d tika`) alongside a natively-running
+  # opencloud binary. Default host port is 19998 to stay clear of
+  # another tika container on 9998, if one is already running;
+  # override via TIKA_PORT in the environment.
+  tika:
+    image: apache/tika:3.0.0.0-full
+    ports:
+      - "${TIKA_PORT:-19998}:9998"
+    restart: unless-stopped

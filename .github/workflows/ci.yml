@@ -58,9 +58,19 @@ jobs:
           go-version: "1.25"
           cache-dependency-path: backend/go.sum
 
+      # backend/go.mod's replace for libre-graph-api-go points at
+      # bootstrap/src/libre-graph-api-go-local, materialized by
+      # bootstrap.sh --prepare (runs openapi-generator-cli in docker
+      # against the pinned spec + runs backend `make generate`).
+      - name: Prepare libre-graph-api-go SDK
+        working-directory: .
+        run: ./bootstrap.sh --prepare
+
       # The Subsonic server stubs are generated from the pinned OpenSubsonic
       # OpenAPI spec (SHA lives in backend/internal/subsonic/gen.go, managed
-      # by the renovate customManager). NOT committed.
+      # by the renovate customManager). NOT committed. `--prepare` above
+      # has already run this, but keep it explicit in case `prepare`
+      # short-circuits for an existing cache on a self-hosted runner.
       - name: Generate Subsonic server stubs
         run: go generate ./...
 
@@ -68,7 +78,17 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: subsonic-generated
-          path: backend/internal/subsonic/generated.go
+          path: backend/internal/subsonic/model/generated.go
+          retention-days: 1
+
+      # Also ship the SDK — docker-build runs `go mod download` on a
+      # context that needs the replace target present at the right
+      # relative path (backend/go.mod → ../bootstrap/src/libre-graph-api-go-local).
+      - name: Upload libregraph-go SDK
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: libregraph-go-local
+          path: bootstrap/src/libre-graph-api-go-local/
           retention-days: 1
 
       - run: go test ./...
@@ -94,7 +114,13 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: subsonic-generated
-          path: backend/internal/subsonic/
+          path: backend/internal/subsonic/model/
+
+      - name: Download libregraph-go SDK
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: libregraph-go-local
+          path: bootstrap/src/libre-graph-api-go-local/
 
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 

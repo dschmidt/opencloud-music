@@ -84,6 +84,41 @@ curl -u '<user>:<app-token>' \
 file /tmp/song.bin   # expect "Audio file ..."
 ```
 
+## Local dev stack (`bootstrap.sh`)
+
+For contributors who don't already have a matching OpenCloud on hand, `./bootstrap.sh` pulls together every moving part — cloning the `feat/graph-search-full` branches of `opencloud` and `libre-graph-api`, regenerating `libre-graph-api-go` from the spec via a pinned `openapi-generator-cli` image, building both binaries with the canonical Makefile recipes, minting a self-signed TLS cert with the right SANs for your LAN, and starting OpenCloud + the music service in the background.
+
+> [!NOTE]
+> This is a **development** helper. It runs everything unsupervised from a scratch dir, hard-codes the dev LDAP / JWT / admin secrets, and trusts self-signed certs. **Do not use the output for anything but local testing.**
+
+```bash
+./bootstrap.sh              # first run: clones, generates, builds, starts OC + music
+./bootstrap.sh              # reruns: kills prior processes via pid files, rebuilds, restarts
+./bootstrap.sh --fresh      # wipe ./bootstrap/ first
+./bootstrap.sh --prepare    # codegen only — used by `make docs`, no services started
+```
+
+Everything dev-generated lives under `./bootstrap/` and can be removed with `rm -rf bootstrap/`. Defaults:
+
+| Port | Service | Override |
+|---|---|---|
+| `9400` | OpenCloud proxy (HTTPS) | `OC_PORT=…` |
+| `9411` | music backend (HTTP) | `MUSIC_PORT=…` |
+| `19998` | Tika (audio metadata extraction) | `TIKA_PORT=…` |
+
+Admin credentials are `admin` / `admin`. Logs land in `bootstrap/logs/{opencloud,music}.log`.
+
+**Smoke test:** open `https://<your-lan-ip>:9400/` in the browser, accept the self-signed cert, log in, and upload a handful of audio files. Give Tika a few seconds to extract ID3 tags, then:
+
+```bash
+http --verify no -a admin:admin GET https://<your-lan-ip>:9400/rest/getArtists
+```
+
+should return a populated `<subsonic-response>` with your artists. Any Subsonic-compatible client (Symfonium, play:Sub, Feishin, …) pointed at the same URL with `admin` / `admin` will sync the library and play tracks.
+
+> [!TIP]
+> Some clients — Substreamer in particular — trip over self-signed TLS and refuse to connect even after you accept the cert in the browser. Point them at the music backend directly via plain HTTP on `http://<your-lan-ip>:9411` instead; that bypasses the OpenCloud proxy and the certificate altogether.
+
 ## Configuration
 
 | Env var | Purpose | Default |
@@ -188,6 +223,11 @@ make format                         # frontend (prettier) + backend (gofmt)
 # Docker
 make docker-up                      # docker compose up -d --build
 make docker-down
+
+# Docs (service reference site — env vars, example config, deprecations)
+make docs                           # build Docusaurus site into docs/generated/ (gitignored)
+make docs-serve-prod                # serve the built site at http://localhost:3000
+make docs-clean                     # wipe .cache/ + docs/generated/
 ```
 
 ## License

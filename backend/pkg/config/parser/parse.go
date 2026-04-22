@@ -37,7 +37,7 @@ func Validate(cfg *config.Config) error {
 	}
 	u, err := url.Parse(cfg.OpenCloud.URL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
-		return errors.New("opencloud-music: OC_URL must be http(s)://...")
+		return errors.New("opencloud-music: OC_URL must be http(s) URL")
 	}
 	return nil
 }
