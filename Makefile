@@ -1,4 +1,4 @@
-.PHONY: frontend-install frontend-serve frontend-build frontend-lint frontend-format frontend-format-check frontend-typecheck frontend-test-unit backend-generate backend-build backend-run backend-test backend-lint backend-format backend-tidy format docker-up docker-down
+.PHONY: frontend-install frontend-serve frontend-build frontend-lint frontend-format frontend-format-check frontend-typecheck frontend-test-unit backend-generate backend-build backend-run backend-test backend-lint backend-format backend-tidy format docker-up docker-down docs docs-serve-prod docs-clean
 
 # --- Frontend ---
 
@@ -65,3 +65,17 @@ docker-up:
 
 docker-down:
 	docker compose down
+
+# --- Docs ---
+# Service reference site (env vars, example config, deprecations).
+# Runs dschmidt/opencloud-service-docs-action at the SHA pinned in
+# .github/workflows/docs.yml — identical code path to CI.
+
+docs:
+	DOCS_OUTPUT="$(CURDIR)/docs/generated" bash .github/docs/run.sh
+
+docs-serve-prod:
+	cd .github/docs/.cache/site && pnpm run serve
+
+docs-clean:
+	rm -rf .github/docs/.cache docs/generated
