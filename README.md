@@ -12,6 +12,8 @@
 >
 > While the dust is still settling, **this repo may see force-pushes and history rewrites** on any branch, including `main`. Rebase your local clone rather than expecting fast-forward merges.
 
+📖 **[Service reference docs](https://dschmidt.github.io/opencloud-music/)** — env vars, example config, and deprecations, regenerated from the `main` branch on every push.
+
 OpenSubsonic-compatible music server for [OpenCloud](https://opencloud.eu). It translates the [Subsonic API](https://opensubsonic.netlify.app/) that native music clients speak (Symfonium, play:Sub, Feishin, Substreamer, …) into OpenCloud Graph search + WebDAV calls, so any audio file in your OpenCloud spaces becomes streamable on any Subsonic-capable client.
 
 No separate database, no duplicate index — the music service is a stateless translator between Subsonic and OpenCloud.
