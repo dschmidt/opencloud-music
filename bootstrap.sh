@@ -15,17 +15,21 @@
 #   --prepare   spec clone + Go SDK generation + make backend-generate
 #               only — what the docs action needs to compile backend/.
 #               No OC build, no tika, no services started.
+#   --stop      kill whatever was started by a previous run (via the
+#               pidfiles under bootstrap/run/) and exit.
 set -euo pipefail
 
 # ── flags ──────────────────────────────────────────────────────────────
 FRESH=0
 PREPARE=0
+STOP=0
 for arg in "$@"; do
   case $arg in
     --fresh) FRESH=1 ;;
     --prepare) PREPARE=1 ;;
+    --stop) STOP=1 ;;
     -h|--help)
-      sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) echo "unknown flag: $arg" >&2; exit 2 ;;
@@ -51,6 +55,37 @@ SPEC_REPO="${SPEC_REPO:-https://github.com/dschmidt/libre-graph-api.git}"
 SPEC_BRANCH="${SPEC_BRANCH:-feat/graph-search-full}"
 OPENAPI_GENERATOR_IMAGE="${OPENAPI_GENERATOR_IMAGE:-openapitools/openapi-generator-cli:v7.16.0}"
 
+# ── pidfile-driven stop helper ────────────────────────────────────────
+# $BS/run/*.pid are written by each spawned wrapper before exec; on
+# rerun (or --stop) we SIGTERM the prior process group (setsid gives
+# each one its own). Stale pidfiles (pid gone, or no longer our binary)
+# are silently dropped.
+stop_prev() {
+  local name=$1
+  local expect=$2
+  local pidfile=$BS/run/$name.pid
+  [[ -f $pidfile ]] || return 0
+  local pid
+  pid=$(<"$pidfile")
+  if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null \
+      && tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q "$expect"; then
+    local pgid; pgid=$(ps -o pgid= "$pid" | tr -d ' ')
+    echo "[stop] killing previous $name (pid $pid, pgid $pgid)"
+    kill -TERM "-$pgid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null
+    for _ in $(seq 1 10); do kill -0 "$pid" 2>/dev/null || break; sleep 0.5; done
+    kill -KILL "-$pgid" 2>/dev/null || true
+  fi
+  rm -f "$pidfile"
+}
+
+# ── --stop: kill running services, clean pidfiles, exit ───────────────
+if [[ $STOP -eq 1 ]]; then
+  stop_prev opencloud "$BS/bin/opencloud"
+  stop_prev music     "$ROOT/backend/bin/opencloud-music"
+  echo "[stop] done"
+  exit 0
+fi
+
 # ── preflight ──────────────────────────────────────────────────────────
 require() { command -v "$1" >/dev/null 2>&1 || { echo "missing required tool: $1" >&2; exit 1; }; }
 require git
@@ -64,30 +99,9 @@ if [[ $PREPARE -eq 0 ]]; then
   require lsof
 fi
 
-# ── stop previous bootstrap-managed processes ─────────────────────────
-# $BS/run/*.pid are written by each spawned wrapper before exec; on
-# rerun we SIGTERM the prior process group (setsid gives each one its
-# own). Runs BEFORE --fresh so we don't rm the pidfiles out from under
-# ourselves. Stale pidfiles (pid gone, or no longer our binary) are
-# silently dropped.
+# Kill any prior bootstrap-run services BEFORE --fresh, so we don't rm
+# the pidfiles out from under ourselves.
 if [[ $PREPARE -eq 0 ]]; then
-  stop_prev() {
-    local name=$1
-    local expect=$2
-    local pidfile=$BS/run/$name.pid
-    [[ -f $pidfile ]] || return 0
-    local pid
-    pid=$(<"$pidfile")
-    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null \
-        && tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q "$expect"; then
-      local pgid; pgid=$(ps -o pgid= "$pid" | tr -d ' ')
-      echo "[stop] killing previous $name (pid $pid, pgid $pgid)"
-      kill -TERM "-$pgid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null
-      for _ in $(seq 1 10); do kill -0 "$pid" 2>/dev/null || break; sleep 0.5; done
-      kill -KILL "-$pgid" 2>/dev/null || true
-    fi
-    rm -f "$pidfile"
-  }
   stop_prev opencloud "$BS/bin/opencloud"
   stop_prev music     "$ROOT/backend/bin/opencloud-music"
 fi

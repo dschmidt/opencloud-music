@@ -103,6 +103,7 @@ For contributors who don't already have a matching OpenCloud on hand, `./bootstr
 ./bootstrap.sh              # reruns: kills prior processes via pid files, rebuilds, restarts
 ./bootstrap.sh --fresh      # wipe ./bootstrap/ first
 ./bootstrap.sh --prepare    # codegen only — used by `make docs`, no services started
+./bootstrap.sh --stop       # kill running OC + music via pid files and exit
 ```
 
 Everything dev-generated lives under `./bootstrap/` and can be removed with `rm -rf bootstrap/`. Defaults:
