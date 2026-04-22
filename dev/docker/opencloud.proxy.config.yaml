@@ -17,3 +17,13 @@ additional_policies:
       - endpoint: /api/music
         backend: http://127.0.0.1:9111
         unprotected: true
+      # Also expose the Subsonic API at the root /rest/* path. Many
+      # native Subsonic clients (Substreamer, play:Sub, …) strip any
+      # base-path prefix from the configured server URL and send every
+      # request to /rest/<endpoint> from the server's root — so the
+      # /api/music/ route alone isn't reachable from those clients.
+      # OpenCloud's web service uses an SPA catch-all for unmatched
+      # paths, so /rest/* would otherwise fall through to index.html.
+      - endpoint: /rest
+        backend: http://127.0.0.1:9111
+        unprotected: true
