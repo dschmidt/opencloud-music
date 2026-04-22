@@ -9,7 +9,11 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: opencloud-eu/opencloud-music
+  # Follows wherever the repo lives — no hardcoded org. Works on the
+  # dschmidt fork today and will self-correct once the repo lands in
+  # opencloud-eu/. ghcr expects lowercase, which matches github org
+  # conventions (both dschmidt and opencloud-eu are already lowercase).
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   frontend:
