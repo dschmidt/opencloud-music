@@ -25,7 +25,7 @@ func (c *Client) SearchHits(ctx context.Context, query string, from, size int32)
 	req.Size = p32(size)
 	body := libregraph.NewSearchQueryRequest([]libregraph.SearchRequest{*req})
 
-	resp, httpResp, err := c.api.SearchApi.SearchQuery(authed).SearchQueryRequest(*body).Execute()
+	resp, httpResp, err := c.api.SearchAPI.SearchQuery(authed).SearchQueryRequest(*body).Execute()
 	if err != nil {
 		status := 0
 		if httpResp != nil {
@@ -58,7 +58,7 @@ func (c *Client) SearchAggregateWithOptions(ctx context.Context, query string, o
 	req.Aggregations = opts
 	body := libregraph.NewSearchQueryRequest([]libregraph.SearchRequest{*req})
 
-	resp, httpResp, err := c.api.SearchApi.SearchQuery(authed).SearchQueryRequest(*body).Execute()
+	resp, httpResp, err := c.api.SearchAPI.SearchQuery(authed).SearchQueryRequest(*body).Execute()
 	if err != nil {
 		status := 0
 		if httpResp != nil {
@@ -100,7 +100,7 @@ func (c *Client) SearchAggregate(ctx context.Context, query string, fields []str
 	req.Aggregations = aggs
 	body := libregraph.NewSearchQueryRequest([]libregraph.SearchRequest{*req})
 
-	resp, httpResp, err := c.api.SearchApi.SearchQuery(authed).SearchQueryRequest(*body).Execute()
+	resp, httpResp, err := c.api.SearchAPI.SearchQuery(authed).SearchQueryRequest(*body).Execute()
 	if err != nil {
 		status := 0
 		if httpResp != nil {

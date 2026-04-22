@@ -16,8 +16,9 @@ replace github.com/pablodz/inotifywaitgo v0.0.9 => github.com/opencloud-eu/inoti
 // aggregations, Audio facet, WebDavUrl on DriveItem). During development
 // we point at a local checkout that may be ahead of the published
 // version — once the upstream module carries everything we depend on,
-// drop this replace and pin a regular version.
-replace github.com/opencloud-eu/libre-graph-api-go => /home/domme/dev/sources/opencloud-eu/libre-graph-api-go-local
+// drop this replace and pin a regular version. bootstrap.sh regenerates
+// the target directory from the upstream spec on every run.
+replace github.com/opencloud-eu/libre-graph-api-go => ../bootstrap/src/libre-graph-api-go-local
 
 require (
 	github.com/getkin/kin-openapi v0.133.0

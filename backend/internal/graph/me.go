@@ -14,7 +14,7 @@ func (c *Client) GetMe(ctx context.Context) (*libregraph.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	user, _, err := c.api.MeUserApi.GetOwnUser(authed).Execute()
+	user, _, err := c.api.MeUserAPI.GetOwnUser(authed).Execute()
 	if err != nil {
 		return nil, fmt.Errorf("graph: GET /me: %w", err)
 	}
