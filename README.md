@@ -5,8 +5,8 @@
 >
 > The music service depends on OpenCloud changes that are **not yet in any release** and, in several cases, **not yet upstreamed**. A single released version that works end-to-end does not exist yet. Until the required pieces land, the only way to run this is against:
 >
-> - `github.com/dschmidt/opencloud` @ `feat/graph-search-full`
-> - `github.com/dschmidt/libre-graph-api` @ `feat/graph-search-full` (drives the regenerated `libre-graph-api-go` SDK)
+> - `github.com/dschmidt/opencloud` @ `feat/graph-search-full-2`
+> - `github.com/dschmidt/libre-graph-api` @ `feat/graph-search-full-2` (drives the regenerated `libre-graph-api-go` SDK)
 >
 > Expect broken listings, wrong counts, or empty responses against any stock build. See [Local dev stack (`bootstrap.sh`)](#local-dev-stack-bootstrapsh) for a one-command setup that pulls everything together.
 >
@@ -95,7 +95,7 @@ file /tmp/song.bin   # expect "Audio file ..."
 
 ## Local dev stack (`bootstrap.sh`)
 
-For contributors who don't already have a matching OpenCloud on hand, `./bootstrap.sh` pulls together every moving part — cloning the `feat/graph-search-full` branches of `opencloud` and `libre-graph-api`, regenerating `libre-graph-api-go` from the spec via a pinned `openapi-generator-cli` image, building both binaries with the canonical Makefile recipes, minting a self-signed TLS cert with the right SANs for your LAN, and starting OpenCloud + the music service in the background.
+For contributors who don't already have a matching OpenCloud on hand, `./bootstrap.sh` pulls together every moving part — cloning the `feat/graph-search-full-2` branches of `opencloud` and `libre-graph-api`, regenerating `libre-graph-api-go` from the spec via a pinned `openapi-generator-cli` image, building both binaries with the canonical Makefile recipes, minting a self-signed TLS cert with the right SANs for your LAN, and starting OpenCloud + the music service in the background.
 
 > [!NOTE]
 > This is a **development** helper. It runs everything unsupervised from a scratch dir, hard-codes the dev LDAP / JWT / admin secrets, and trusts self-signed certs. **Do not use the output for anything but local testing.**

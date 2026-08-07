@@ -5,8 +5,8 @@
 # thrown away with `rm -rf bootstrap/` (or `./bootstrap.sh --fresh`).
 #
 # Upstream state pulled in:
-#   - github.com/dschmidt/opencloud      @ feat/graph-search-full
-#   - github.com/dschmidt/libre-graph-api @ feat/graph-search-full
+#   - github.com/dschmidt/opencloud      @ feat/graph-search-full-2
+#   - github.com/dschmidt/libre-graph-api @ feat/graph-search-full-2
 #   - libre-graph-api-go is NOT pushed; the script regenerates it from
 #     the spec via docker openapi-generator-cli on every run.
 #
@@ -47,12 +47,12 @@ LAN_IP="${BOOTSTRAP_LAN_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
 [[ -z "$LAN_IP" ]] && LAN_IP="127.0.0.1"
 
 # ── upstream sources ───────────────────────────────────────────────────
-# Forks at feat/graph-search-full carry the search-aggregation work
+# Forks at feat/graph-search-full-2 carry the search-aggregation work
 # not yet upstream. libregraph-go is regenerated from the spec locally.
 OC_REPO="${OC_REPO:-https://github.com/dschmidt/opencloud.git}"
-OC_BRANCH="${OC_BRANCH:-feat/graph-search-full}"
+OC_BRANCH="${OC_BRANCH:-feat/graph-search-full-2}"
 SPEC_REPO="${SPEC_REPO:-https://github.com/dschmidt/libre-graph-api.git}"
-SPEC_BRANCH="${SPEC_BRANCH:-feat/graph-search-full}"
+SPEC_BRANCH="${SPEC_BRANCH:-feat/graph-search-full-2}"
 OPENAPI_GENERATOR_IMAGE="${OPENAPI_GENERATOR_IMAGE:-openapitools/openapi-generator-cli:v7.16.0}"
 
 # ── pidfile-driven stop helper ────────────────────────────────────────
