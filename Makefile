@@ -75,7 +75,7 @@ docs:
 	bash .github/docs/run.sh
 
 docs-serve-prod:
-	cd .github/docs/.cache/site && pnpm run serve
+	cd .cache/service-docs/site && pnpm run serve
 
 docs-clean:
-	rm -rf .github/docs/.cache
+	rm -rf .cache/service-docs
