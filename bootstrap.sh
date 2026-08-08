@@ -195,13 +195,6 @@ if [[ -f "$DOCS_CFG" ]]; then
       go mod edit -dropreplace=github.com/opencloud-eu/libre-graph-api-go 2>/dev/null || true
       go mod edit -replace="github.com/opencloud-eu/libre-graph-api-go=$SDK_OUT"
     )
-    # Compat with docs-action pins older than 8956447: those look for the
-    # prepared generator under .github/docs/.cache/. Remove together with
-    # the .github/docs/opencloud-service.yml symlink once the pin in
-    # .github/workflows/docs.yml is bumped.
-    mkdir -p "$ROOT/.github/docs/.cache"
-    rm -rf "$ROOT/.github/docs/.cache/generator"
-    ln -s "$DOCS_GEN_DIR" "$ROOT/.github/docs/.cache/generator"
   fi
 fi
 
