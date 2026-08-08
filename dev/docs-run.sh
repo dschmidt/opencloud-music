@@ -7,7 +7,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && cd .. && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WORKFLOW="$REPO_ROOT/.github/workflows/docs.yml"
 ACTION_REPO="dschmidt/opencloud-service-docs-action"
 ACTION_DIR="$REPO_ROOT/.cache/service-docs/action"

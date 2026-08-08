@@ -72,7 +72,7 @@ docker-down:
 # .github/workflows/docs.yml — identical code path to CI.
 
 docs:
-	bash .github/docs/run.sh
+	bash dev/docs-run.sh
 
 docs-serve-prod:
 	cd .cache/service-docs/site && pnpm run serve
