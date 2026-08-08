@@ -235,9 +235,10 @@ make docker-up                      # docker compose up -d --build
 make docker-down
 
 # Docs (service reference site — env vars, example config, deprecations)
-make docs                           # build Docusaurus site into docs/generated/ (gitignored)
+# Authored pages live in docs/; the build lands in .github/docs/.cache/ (gitignored)
+make docs                           # build Docusaurus site into .github/docs/.cache/site-build/
 make docs-serve-prod                # serve the built site at http://localhost:3000
-make docs-clean                     # wipe .cache/ + docs/generated/
+make docs-clean                     # wipe .github/docs/.cache/
 ```
 
 ## License

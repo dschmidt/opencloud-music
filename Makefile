@@ -72,10 +72,10 @@ docker-down:
 # .github/workflows/docs.yml — identical code path to CI.
 
 docs:
-	DOCS_OUTPUT="$(CURDIR)/docs/generated" bash .github/docs/run.sh
+	bash .github/docs/run.sh
 
 docs-serve-prod:
 	cd .github/docs/.cache/site && pnpm run serve
 
 docs-clean:
-	rm -rf .github/docs/.cache docs/generated
+	rm -rf .github/docs/.cache

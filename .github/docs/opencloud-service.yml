@@ -20,8 +20,8 @@ site:
     OpenCloud changes.
     <a href="https://github.com/dschmidt/opencloud-music#readme">See the
     README</a> for the required forks.
-  # Extra/overriding pages live in .github/docs/pages/ (the default), where
-  # intro.md replaces the stock overview page.
+  # Extra/overriding pages live in docs/ (the default), where intro.md
+  # replaces the stock overview page.
 
 pins:
   # opencloud-eu/markdown-docs-generator
