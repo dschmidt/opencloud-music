@@ -7,10 +7,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && cd .. && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WORKFLOW="$REPO_ROOT/.github/workflows/docs.yml"
 ACTION_REPO="dschmidt/opencloud-service-docs-action"
-ACTION_DIR="$SCRIPT_DIR/.cache/action"
+ACTION_DIR="$REPO_ROOT/.cache/service-docs/action"
 
 REF="$(grep -oE "${ACTION_REPO}@[^ \"']+" "$WORKFLOW" | head -1 | cut -d@ -f2)"
 [ -n "$REF" ] || { echo "error: could not find ${ACTION_REPO}@<ref> in $WORKFLOW" >&2; exit 1; }

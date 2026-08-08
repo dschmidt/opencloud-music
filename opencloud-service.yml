@@ -12,6 +12,16 @@ service:
 site:
   title: opencloud-music
   tagline: Music extension for OpenCloud
+  # Site-wide banner on every page — mirrors the README warning so nobody
+  # mistakes these docs for a released, upstream-compatible service.
+  announcement: >-
+    🚧 Proof of concept — opencloud-music does <strong>not</strong> work with
+    any released OpenCloud yet; it needs unreleased, partly un-upstreamed
+    OpenCloud changes.
+    <a href="https://github.com/dschmidt/opencloud-music#readme">See the
+    README</a> for the required forks.
+  # Extra/overriding pages live in docs/ (the default), where intro.md
+  # replaces the stock overview page.
 
 pins:
   # opencloud-eu/markdown-docs-generator

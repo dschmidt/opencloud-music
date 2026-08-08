@@ -177,8 +177,8 @@ fi
 #    only injects a replace for the *service* module, so its subsequent
 #    `go mod tidy` would otherwise fail fetching the unreleased
 #    pseudo-version backend/go.mod requires.
-DOCS_CFG="$ROOT/.github/docs/opencloud-service.yml"
-DOCS_GEN_DIR="$ROOT/.github/docs/.cache/generator"
+DOCS_CFG="$ROOT/opencloud-service.yml"
+DOCS_GEN_DIR="$ROOT/.cache/service-docs/generator"
 if [[ -f "$DOCS_CFG" ]]; then
   GEN_REF="$(awk '/^[[:space:]]*generator_ref:/{print $2; exit}' "$DOCS_CFG" | tr -d '"')"
   if [[ -n "$GEN_REF" ]]; then
