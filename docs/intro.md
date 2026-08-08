@@ -29,10 +29,6 @@ API that native music clients speak (Symfonium, play:Sub, Feishin,
 Substreamer, …) into OpenCloud Graph search + WebDAV calls — no separate
 database, no duplicate index.
 
-This site is the auto-generated **configuration reference**, regenerated from
-the `main` branch on every push (it documents the current development state,
-not a release):
-
 - **[Environment variables](configuration/environment-variables)** — every env var parsed by the service at startup.
 - **[Example configuration](configuration/example-config)** — YAML config with all defaults.
 - **[Deprecations](configuration/deprecations)** — renamed or removed env vars.
