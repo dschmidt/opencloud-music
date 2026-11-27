@@ -1,11 +1,6 @@
 FROM golang:1.25-alpine@sha256:8e02eb337d9e0ea459e041f1ee5eece41cbb61f1d83e7d883a3e2fb4862063fa AS builder
 
-# backend/go.mod's replace for libre-graph-api-go resolves to
-# ../bootstrap/src/libre-graph-api-go-local — materialized by
-# `./bootstrap.sh --prepare` on the host (or the CI job that
-# downloaded the libregraph-go-local artifact before build).
 WORKDIR /src
-COPY bootstrap/src/libre-graph-api-go-local ./bootstrap/src/libre-graph-api-go-local
 COPY backend/go.mod backend/go.sum ./backend/
 WORKDIR /src/backend
 RUN go mod download

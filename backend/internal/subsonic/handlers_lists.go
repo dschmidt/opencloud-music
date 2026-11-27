@@ -75,10 +75,13 @@ func (s *Server) GetAlbumList2(w http.ResponseWriter, r *http.Request, params mo
 			proto.WriteError(w, proto.ErrMissingParam, "fromYear and toYear are required for byYear")
 			return
 		}
-		// OpenCloud's KQL grammar only supports equality right now;
-		// narrow via the range once upstream land the numeric range
-		// operators. For now, fall back to the first year.
-		query += " AND audio.year:" + quote(strconv.Itoa(*params.FromYear))
+		// Subsonic allows fromYear > toYear (descending order); the
+		// filter is the same inclusive range either way.
+		lo, hi := *params.FromYear, *params.ToYear
+		if lo > hi {
+			lo, hi = hi, lo
+		}
+		query += " AND audio.year>=" + strconv.Itoa(lo) + " AND audio.year<=" + strconv.Itoa(hi)
 	}
 
 	out, err := s.aggregateAlbumList(r.Context(), query, string(params.Type), offset, size)
@@ -149,7 +152,7 @@ func (s *Server) aggregateAlbumList(ctx context.Context, query, listType string,
 			if artist == "" {
 				continue
 			}
-			for _, sub := range artistBucket.SubAggregations {
+			for _, sub := range artistBucket.LibreGraphSubAggregations {
 				if sub.Field == nil || *sub.Field != "audio.album" {
 					continue
 				}
@@ -159,9 +162,9 @@ func (s *Server) aggregateAlbumList(ctx context.Context, query, listType string,
 						continue
 					}
 					d := int64(0)
-					for _, m := range albumBucket.SubAggregations {
-						if m.Field != nil && *m.Field == "audio.duration" && m.Value != nil {
-							d = int64(*m.Value / 1000)
+					for _, m := range albumBucket.LibreGraphSubAggregations {
+						if m.Field != nil && *m.Field == "audio.duration" && m.LibreGraphMetric != nil && m.LibreGraphMetric.Value != nil {
+							d = int64(*m.LibreGraphMetric.Value / 1000)
 						}
 					}
 					all = append(all, flatAlbum{
@@ -501,7 +504,7 @@ func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params model.Se
 				continue
 			}
 			artistAlbums := 0
-			for _, sub := range artistBucket.SubAggregations {
+			for _, sub := range artistBucket.LibreGraphSubAggregations {
 				if sub.Field != nil && *sub.Field == "audio.album" {
 					artistAlbums = len(sub.Buckets)
 					for _, albumBucket := range sub.Buckets {
@@ -513,9 +516,9 @@ func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params model.Se
 							continue
 						}
 						duration := int64(0)
-						for _, m := range albumBucket.SubAggregations {
-							if m.Field != nil && *m.Field == "audio.duration" && m.Value != nil {
-								duration = int64(*m.Value / 1000)
+						for _, m := range albumBucket.LibreGraphSubAggregations {
+							if m.Field != nil && *m.Field == "audio.duration" && m.LibreGraphMetric != nil && m.LibreGraphMetric.Value != nil {
+								duration = int64(*m.LibreGraphMetric.Value / 1000)
 							}
 						}
 						albums = append(albums, albumEntry(artist, album,

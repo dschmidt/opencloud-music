@@ -25,16 +25,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Clone libre-graph-api @ feat/graph-search-full, generate the Go SDK
-      # in-tree, and inject a replace into the docs generator's go.mod so
-      # its `go mod tidy` can resolve the unreleased pseudo-version
-      # backend/go.mod pins. See bootstrap.sh for the full explanation.
+      # Generate the Subsonic server stubs the docs generator needs to
+      # compile backend/.
       - uses: actions/setup-go@v5
         with:
           go-version-file: backend/go.mod
           cache: false
 
-      - name: Prepare libre-graph-api-go SDK + docs generator replace
+      - name: Generate Subsonic server stubs
         run: ./bootstrap.sh --prepare
 
       - id: build

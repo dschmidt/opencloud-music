@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/url"
 
-	occfg "github.com/opencloud-eu/opencloud/pkg/config"
+	"github.com/opencloud-eu/opencloud/pkg/config/binder"
 	"github.com/opencloud-eu/opencloud/pkg/config/envdecode"
 
 	"github.com/opencloud-eu/opencloud-music/pkg/config"
@@ -13,7 +13,7 @@ import (
 
 // ParseConfig loads configuration from known sources (config files, env vars).
 func ParseConfig(cfg *config.Config) error {
-	if err := occfg.BindSourcesToStructs(cfg.Service.Name, cfg); err != nil {
+	if err := binder.BindSourcesToStructs(cfg.Service.Name, cfg); err != nil {
 		return err
 	}
 
