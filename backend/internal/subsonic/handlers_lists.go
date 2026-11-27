@@ -75,10 +75,13 @@ func (s *Server) GetAlbumList2(w http.ResponseWriter, r *http.Request, params mo
 			proto.WriteError(w, proto.ErrMissingParam, "fromYear and toYear are required for byYear")
 			return
 		}
-		// OpenCloud's KQL grammar only supports equality right now;
-		// narrow via the range once upstream land the numeric range
-		// operators. For now, fall back to the first year.
-		query += " AND audio.year:" + quote(strconv.Itoa(*params.FromYear))
+		// Subsonic allows fromYear > toYear (descending order); the
+		// filter is the same inclusive range either way.
+		lo, hi := *params.FromYear, *params.ToYear
+		if lo > hi {
+			lo, hi = hi, lo
+		}
+		query += " AND audio.year>=" + strconv.Itoa(lo) + " AND audio.year<=" + strconv.Itoa(hi)
 	}
 
 	out, err := s.aggregateAlbumList(r.Context(), query, string(params.Type), offset, size)
