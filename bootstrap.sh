@@ -5,15 +5,12 @@
 # thrown away with `rm -rf bootstrap/` (or `./bootstrap.sh --fresh`).
 #
 # Upstream state pulled in:
-#   - github.com/dschmidt/opencloud      @ feat/graph-search-full-2
-#   - github.com/dschmidt/libre-graph-api @ feat/graph-search-full-2
-#   - libre-graph-api-go is NOT pushed; the script regenerates it from
-#     the spec via docker openapi-generator-cli on every run.
+#   - github.com/opencloud-eu/opencloud @ main
 #
 # Flags:
 #   --fresh     rm -rf bootstrap/ before anything
-#   --prepare   spec clone + Go SDK generation + make backend-generate
-#               only — what the docs action needs to compile backend/.
+#   --prepare   make backend-generate only, what the docs action
+#               needs to compile backend/.
 #               No OC build, no tika, no services started.
 #   --stop      kill whatever was started by a previous run (via the
 #               pidfiles under bootstrap/run/) and exit.
@@ -47,13 +44,8 @@ LAN_IP="${BOOTSTRAP_LAN_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
 [[ -z "$LAN_IP" ]] && LAN_IP="127.0.0.1"
 
 # ── upstream sources ───────────────────────────────────────────────────
-# Forks at feat/graph-search-full-2 carry the search-aggregation work
-# not yet upstream. libregraph-go is regenerated from the spec locally.
-OC_REPO="${OC_REPO:-https://github.com/dschmidt/opencloud.git}"
-OC_BRANCH="${OC_BRANCH:-feat/graph-search-full-2}"
-SPEC_REPO="${SPEC_REPO:-https://github.com/dschmidt/libre-graph-api.git}"
-SPEC_BRANCH="${SPEC_BRANCH:-feat/graph-search-full-2}"
-OPENAPI_GENERATOR_IMAGE="${OPENAPI_GENERATOR_IMAGE:-openapitools/openapi-generator-cli:v7.16.0}"
+OC_REPO="${OC_REPO:-https://github.com/opencloud-eu/opencloud.git}"
+OC_BRANCH="${OC_BRANCH:-main}"
 
 # ── pidfile-driven stop helper ────────────────────────────────────────
 # $BS/run/*.pid are written by each spawned wrapper before exec; on
@@ -142,61 +134,6 @@ clone_or_update() {
     git clone --quiet --branch "$branch" --depth=100 "$repo" "$dest"
   fi
 }
-
-clone_or_update "$SPEC_REPO" "$BS/src/libre-graph-api" "$SPEC_BRANCH"
-
-# ── libregraph-go SDK generation ──────────────────────────────────────
-echo "[sdk] generating libre-graph-api-go from spec via $OPENAPI_GENERATOR_IMAGE"
-SDK_OUT="$BS/src/libre-graph-api-go-local"
-rm -rf "$SDK_OUT"
-mkdir -p "$SDK_OUT"
-docker run --rm \
-  -u "$(id -u):$(id -g)" \
-  -v "$BS/src/libre-graph-api:/spec:ro" \
-  -v "$SDK_OUT:/out" \
-  "$OPENAPI_GENERATOR_IMAGE" \
-  generate \
-    -i /spec/api/openapi-spec/v1.0.yaml \
-    -g go \
-    -o /out \
-    --git-user-id=opencloud-eu \
-    --git-repo-id=libre-graph-api-go \
-    --additional-properties=packageName=libregraph,withGoMod=true,isGoSubmodule=false \
-    >/dev/null
-# openapi-generator drops the package name into a subdir we don't want —
-# lift the *.go + go.mod into the output root if present.
-if [[ -d "$SDK_OUT/go" && ! -f "$SDK_OUT/go.mod" ]]; then
-  mv "$SDK_OUT/go"/* "$SDK_OUT/"
-  rmdir "$SDK_OUT/go"
-fi
-
-# ── prepare docs generator for `make docs` ───────────────────────────
-#    Clone markdown-docs-generator (same repo + pinned ref the docs
-#    action would fetch anyway) and inject a replace for
-#    libre-graph-api-go into its go.mod. The docs action's own build.sh
-#    only injects a replace for the *service* module, so its subsequent
-#    `go mod tidy` would otherwise fail fetching the unreleased
-#    pseudo-version backend/go.mod requires.
-DOCS_CFG="$ROOT/opencloud-service.yml"
-DOCS_GEN_DIR="$ROOT/.cache/service-docs/generator"
-if [[ -f "$DOCS_CFG" ]]; then
-  GEN_REF="$(awk '/^[[:space:]]*generator_ref:/{print $2; exit}' "$DOCS_CFG" | tr -d '"')"
-  if [[ -n "$GEN_REF" ]]; then
-    if [[ ! -d "$DOCS_GEN_DIR/.git" ]] || [[ "$(git -C "$DOCS_GEN_DIR" rev-parse HEAD 2>/dev/null)" != "$GEN_REF" ]]; then
-      echo "[docs] cloning markdown-docs-generator @ $GEN_REF"
-      rm -rf "$DOCS_GEN_DIR"
-      mkdir -p "$(dirname "$DOCS_GEN_DIR")"
-      git clone --quiet https://github.com/opencloud-eu/markdown-docs-generator.git "$DOCS_GEN_DIR"
-      git -C "$DOCS_GEN_DIR" checkout --quiet "$GEN_REF"
-    fi
-    echo "[docs] injecting libre-graph-api-go replace into generator go.mod"
-    (
-      cd "$DOCS_GEN_DIR"
-      go mod edit -dropreplace=github.com/opencloud-eu/libre-graph-api-go 2>/dev/null || true
-      go mod edit -replace="github.com/opencloud-eu/libre-graph-api-go=$SDK_OUT"
-    )
-  fi
-fi
 
 # ── music backend codegen ─────────────────────────────────────────────
 echo "[backend] make generate"

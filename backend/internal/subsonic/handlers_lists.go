@@ -149,7 +149,7 @@ func (s *Server) aggregateAlbumList(ctx context.Context, query, listType string,
 			if artist == "" {
 				continue
 			}
-			for _, sub := range artistBucket.SubAggregations {
+			for _, sub := range artistBucket.LibreGraphSubAggregations {
 				if sub.Field == nil || *sub.Field != "audio.album" {
 					continue
 				}
@@ -159,9 +159,9 @@ func (s *Server) aggregateAlbumList(ctx context.Context, query, listType string,
 						continue
 					}
 					d := int64(0)
-					for _, m := range albumBucket.SubAggregations {
-						if m.Field != nil && *m.Field == "audio.duration" && m.Value != nil {
-							d = int64(*m.Value / 1000)
+					for _, m := range albumBucket.LibreGraphSubAggregations {
+						if m.Field != nil && *m.Field == "audio.duration" && m.LibreGraphMetric != nil && m.LibreGraphMetric.Value != nil {
+							d = int64(*m.LibreGraphMetric.Value / 1000)
 						}
 					}
 					all = append(all, flatAlbum{
@@ -501,7 +501,7 @@ func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params model.Se
 				continue
 			}
 			artistAlbums := 0
-			for _, sub := range artistBucket.SubAggregations {
+			for _, sub := range artistBucket.LibreGraphSubAggregations {
 				if sub.Field != nil && *sub.Field == "audio.album" {
 					artistAlbums = len(sub.Buckets)
 					for _, albumBucket := range sub.Buckets {
@@ -513,9 +513,9 @@ func (s *Server) Search3(w http.ResponseWriter, r *http.Request, params model.Se
 							continue
 						}
 						duration := int64(0)
-						for _, m := range albumBucket.SubAggregations {
-							if m.Field != nil && *m.Field == "audio.duration" && m.Value != nil {
-								duration = int64(*m.Value / 1000)
+						for _, m := range albumBucket.LibreGraphSubAggregations {
+							if m.Field != nil && *m.Field == "audio.duration" && m.LibreGraphMetric != nil && m.LibreGraphMetric.Value != nil {
+								duration = int64(*m.LibreGraphMetric.Value / 1000)
 							}
 						}
 						albums = append(albums, albumEntry(artist, album,

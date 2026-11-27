@@ -31,7 +31,7 @@ func buildAggregation(field string, size int32, subs ...libregraph.AggregationOp
 	bd.MinimumCount = &minCount
 	opt.BucketDefinition = bd
 	if len(subs) > 0 {
-		opt.SubAggregations = subs
+		opt.LibreGraphSubAggregations = subs
 	}
 	return *opt
 }
@@ -41,7 +41,7 @@ func buildAggregation(field string, size int32, subs ...libregraph.AggregationOp
 // the reduced scalar instead of a bucket list.
 func buildMetric(field, kind string) libregraph.AggregationOption {
 	opt := libregraph.NewAggregationOption(field)
-	opt.MetricKind = &kind
+	opt.LibreGraphMetricDefinition = libregraph.NewMetricDefinition(kind)
 	return *opt
 }
 
@@ -138,7 +138,7 @@ func (s *Server) GetArtists(w http.ResponseWriter, r *http.Request, _ model.GetA
 				continue
 			}
 			albumCount := 0
-			for _, sub := range b.SubAggregations {
+			for _, sub := range b.LibreGraphSubAggregations {
 				if sub.Field != nil && *sub.Field == "audio.album" {
 					albumCount = len(sub.Buckets)
 				}
@@ -230,9 +230,9 @@ func (s *Server) GetArtist(w http.ResponseWriter, r *http.Request, params model.
 				continue
 			}
 			durationSeconds := int64(0)
-			for _, sub := range b.SubAggregations {
-				if sub.Field != nil && *sub.Field == "audio.duration" && sub.Value != nil {
-					durationSeconds = int64(*sub.Value / 1000)
+			for _, sub := range b.LibreGraphSubAggregations {
+				if sub.Field != nil && *sub.Field == "audio.duration" && sub.LibreGraphMetric != nil && sub.LibreGraphMetric.Value != nil {
+					durationSeconds = int64(*sub.LibreGraphMetric.Value / 1000)
 				}
 			}
 			albums = append(albums, albumEntry(name, album, derefInt64(b.Count), durationSeconds))
@@ -377,7 +377,7 @@ func (s *Server) GetGenres(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			albumCount := 0
-			for _, sub := range b.SubAggregations {
+			for _, sub := range b.LibreGraphSubAggregations {
 				if sub.Field != nil && *sub.Field == "audio.album" {
 					albumCount = len(sub.Buckets)
 				}
